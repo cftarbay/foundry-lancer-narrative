@@ -62,7 +62,10 @@ const result = await foundry.applications.api.DialogV2.wait({
 
 console.log(result);
 
-const addSkills = parseInt(result.skills);
+const skillValue = parseInt(result.skills.split("|")[1]);
+const skillName = result.skills.split("|")[0];
+
+const addSkills = skillValue;
 const addGear = parseInt(result.gear);
 const subBurdens = parseInt(result.burdens);
 const manMod = parseInt(result.override);
@@ -80,7 +83,8 @@ if (baseDice > 6) baseDice = 6;
 //if less than one die base, roll at disadvantage
 if (baseDice < 1) r = new Roll(`2d6kl1`);
 else if (baseDice === 1) r = new Roll('1d6');
-else r = new Roll(`${baseDice}d6kh2`);
+else if (baseDice === 2) r = new Roll('2d6kh1');
+else r = new Roll(`${baseDice}d6kh1`);
 
 console.log(r.dice)
 
@@ -92,6 +96,20 @@ console.log(r.terms[0].results);
 
 let dice = r.terms[0].results;
 
+dice.sort((a, b) => {
+  if (a.active) return -1;
+  if (b.active) return 1;
+  else return b.result - a.result;
+});
+
+
+let rolled = dice.map(d => { return d.result });
+console.log(findTwist(rolled));
+
+let msg = buildResultMsg(r, rolled, skillName);
+console.log(msg)
+
+console.log(rolled)
 
 // The total resulting from the roll
 console.log(r);
@@ -102,13 +120,13 @@ console.log(r);
 //include all dice and highlight ones that are used
 ChatMessage.create({
   user: game.user._id,
-  content: r +"<br/>"+r.total
+  content: msg
 });
 
 function getSkillsList(me) {
   //first skill option is none
   let skills = [
-    { label: "None", value: 0 }
+    { label: "None", value: "Unskilled|0" }
   ];
 
   //populate list of character skills and their values
@@ -118,7 +136,7 @@ function getSkillsList(me) {
 
       skills.push({
         label: i.name + ' (+' + rank + ')',
-        value: rank
+        value: i.name + "|" + rank
       });
     }
   }
@@ -161,6 +179,7 @@ function getItemsList(me) {
   return items;
 }
 
+//todo this is chopped. use foundry built ins?
 function makeHtmlSelect(opts, name) {
   //open html select
   let select = "<select name='" + name + "' id='" + name + "'>";
@@ -191,4 +210,26 @@ function makeRadioButtons(opts, name, group) {
 
 function addLabelFor(id, label) {
   return '<label for="' + id + '">' + label + '</label>';
+}
+
+function getSuccess(dice) {
+  if (dice[0] === 6) return "Complete Success";
+  else if (dice[0] > 3) return "Partial Success";
+  else return "Failure";
+}
+
+function findTwist(dice) {
+  if (dice.length < 2) return false;
+  else return dice[0] === dice[1];
+}
+
+function buildResultMsg(r, dice, skill) {
+  let msg = skill + " Check <br/>";
+  msg += r + "<br/>";
+  msg += dice.join(', ') + '<br/>';
+  msg += getSuccess(dice);
+  if (findTwist(dice)) msg += ' with a twist!';
+
+
+  return msg;
 }
