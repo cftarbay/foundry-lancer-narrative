@@ -9,9 +9,6 @@ const radioOptions = [
   { value: 0, label: 'none', selected: true }
 ]
 
-console.log("items");
-console.log(me.items._source);
-
 //skills
 const skills = addLabelFor('skills', 'Relevant skill?') + makeHtmlSelect(getSkillsList(me), 'skills');
 //burdens
@@ -30,15 +27,18 @@ const manualField = fields.createFormGroup({ input: manualInput, label: 'Manual 
 //background radio buttons
 const backgrounds = makeRadioButtons(radioOptions, "Background effect:", "background");
 
-//!TODO radio buttons for background accuracy/difficulty/none
-
+const styles = createStyleTag();
 
 const result = await foundry.applications.api.DialogV2.wait({
   window: { title: "Narrative Check" },
+  position: {
+    width: 500
+  },
   //help checkbox
   //!TODO fix formatting (put on same line)
   //foundry dialog is using flexbox display
   content:
+    styles +
     `${helpCheckbox.outerHTML}`
     + skills
     + burdens
@@ -86,13 +86,7 @@ else if (baseDice === 1) r = new Roll('1d6');
 else if (baseDice === 2) r = new Roll('2d6kh1');
 else r = new Roll(`${baseDice}d6kh1`);
 
-console.log(r.dice)
-
-console.log(r.terms);
-
 await r.evaluate();
-
-console.log(r.terms[0].results);
 
 let dice = r.terms[0].results;
 
@@ -104,15 +98,8 @@ dice.sort((a, b) => {
 
 
 let rolled = dice.map(d => { return d.result });
-console.log(findTwist(rolled));
 
 let msg = buildResultMsg(r, rolled, skillName);
-console.log(msg)
-
-console.log(rolled)
-
-// The total resulting from the roll
-console.log(r);
 
 //todo generate message including skill used (or unskilled)
 //include roll formula and total
@@ -232,4 +219,12 @@ function buildResultMsg(r, dice, skill) {
 
 
   return msg;
+}
+
+function createStyleTag() {
+  return `
+<style>
+
+</style>
+  `
 }
