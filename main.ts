@@ -1,9 +1,4 @@
 let baseDice = 1;
-
-let me;
-if(!game.user.isActiveGM)
-me = game.user.character;
-else {me = null;console.log('its u')}
 const fields = foundry.applications.fields;
 
 const radioOptions = [
@@ -16,83 +11,27 @@ const positionOptions = [
   { value: "Controlled", label: 'Controlled' },
   { value: 'Risky', label: 'Risky' },
   { value: 'Desperate', label: 'Desperate' }
-]
+];
 
-const skillList = getSkillsList(me);
-const skillsInput = fields.createSelectInput({ id: 'skills', name: 'skills', options: skillList });
-const skillsField = fields.createFormGroup({ input: skillsInput, label: 'Relevant skill?' });
-
-const burdenList = getBurdensList(me);
-const burdenInput = fields.createSelectInput({ id: 'burdens', name: 'burdens', options: burdenList });
-const burdenField = fields.createFormGroup({ input: burdenInput, label: 'Relevant burden?' });
-
-const gearList = getItemsList(me);
-const gearInput = fields.createSelectInput({ id: 'gear', name: 'gear', options: gearList });
-const gearField = fields.createFormGroup({ input: gearInput, label: 'Relevant pilot gear?' });
-
-const positionInput = fields.createSelectInput({ id: 'position', name: 'position', options: positionOptions });
-const positionField = fields.createFormGroup({ input: positionInput, label: 'Position' });
-
-const helpInput = fields.createCheckboxInput({ id: 'helpAction', name: 'helpAction' });
-const helpCheckbox = fields.createFormGroup({ input: helpInput, label: 'Help provided?' });
-
-const manualInput = fields.createNumberInput({ id: 'override', name: 'override', min: -5, max: 8, step: 1, value: 0 });
-const manualField = fields.createFormGroup({ input: manualInput, label: 'Manual modifier' });
-
-const backgrounds = makeRadioButtons(radioOptions, "Background effect:", "background");
-
-let dropdowns = '';
-if (skillList.length > 1) dropdowns += skillsField.outerHTML;
-if (burdenList.length > 1) dropdowns += burdenField.outerHTML;
-if (gearList.length > 1) dropdowns += gearField.outerHTML;
-
-//TODO make position dropdown?
-
-//TODO actually fill out dialog inner styles
-//TODO this doesn't actually do anything
-const styles = createStyleTag();
-console.log(styles);
-
-const result = await foundry.applications.api.DialogV2.wait({
-  window: { title: "Narrative Check" },
-  position: { width: 400 },
-  classes: ['narrative-dialog'],
-  //help checkbox
-  //!TODO fix formatting (put on same line)
-  //foundry dialog is using flexbox display
-  content:
-    styles
-    + dropdowns
-    + helpCheckbox.outerHTML
-    + "<div style='font-size:12px; color: yellow; font-weight: 600; margin-top: -10px;'>!! WARNING: providing help exposes the helping character to any consequences that result from this check !!</div>"
-    + backgrounds
-    +
-    //free modifier number input
-    //!TODO currently displaying as text input without click steps
-    manualField.outerHTML
-
-    + "<div style='font-size:12px; color: mistyrose; font-weight: 600; margin-top: -10px;'>## INFO: apply any additional accuracy or difficulty (from character drive, situation, etc) here ##</div>"
-    + positionField.outerHTML,
-  buttons: [{
-    action: "submit",
-    label: "Confirm",
-    default: true,
-    callback: (event, button, dialog) => {
-      // Create a FormData object from the button's parent form
-      const formData = new foundry.applications.ux.FormDataExtended(button.form).object;
-      return formData; // This value is returned by the 'wait' promise
-    }
-  },
-  {
-    action: "cancel",
-    label: "Cancel",
-    default: false,
-    callback: (event, button, dialog) => {
-      return null; // This value is returned by the 'wait' promise
-    }
+const submitButton = {
+  action: "submit",
+  label: "Confirm",
+  default: true,
+  callback: (event, button, dialog) => {
+    // Create a FormData object from the button's parent form
+    const formData = new foundry.applications.ux.FormDataExtended(button.form).object;
+    return formData; // This value is returned by the 'wait' promise
   }
-  ]
-});
+};
+
+const cancelButton = {
+  action: "cancel",
+  label: "Cancel",
+  default: false,
+  callback: (event, button, dialog) => {
+    return null; // This value is returned by the 'wait' promise
+  }
+};
 
 const twistTable = new Map();
 twistTable.set("Triumph", "The action succeeds spectacularly, or something extremely useful is uncovered.");
@@ -104,22 +43,113 @@ resultAliases.set("Triumph", "Complete Success");
 resultAliases.set("Conflict", "Partial Success");
 resultAliases.set("Disaster", "Failure");
 
+const positionInput = fields.createSelectInput({ id: 'position', name: 'position', options: positionOptions });
+const positionField = fields.createFormGroup({ input: positionInput, label: 'Position' });
 
+const manualInput = fields.createNumberInput({ id: 'override', name: 'override', min: -5, max: 8, step: 1, value: 0 });
+const manualField = fields.createFormGroup({ input: manualInput, label: 'Manual modifier' });
 
-if (!!result && result !== 'cancel') {
-  const skillValue = parseInt(result.skills.split("|")[1]);
-  const skillName = result.skills.split("|")[0];
+let me;
+if (!game.user.isActiveGM){
+  me = game.user.character;
+  await playerFlow();
+}
+else { me = null; console.log('its u'); await gmFlow(); }
 
-  const addSkills = skillValue;
-  const addGear = parseInt(result.gear ?? '0');
-  const subBurdens = parseInt(result.burdens ?? '0');
-  const manMod = parseInt(result.override);
-  const addBg = parseInt(result.background);
+async function playerFlow() {
+  const skillList = getSkillsList(me);
+  const skillsInput = fields.createSelectInput({ id: 'skills', name: 'skills', options: skillList });
+  const skillsField = fields.createFormGroup({ input: skillsInput, label: 'Relevant skill?' });
 
-  baseDice += addSkills + addGear + subBurdens + manMod + addBg;
+  const burdenList = getBurdensList(me);
+  const burdenInput = fields.createSelectInput({ id: 'burdens', name: 'burdens', options: burdenList });
+  const burdenField = fields.createFormGroup({ input: burdenInput, label: 'Relevant burden?' });
 
-  if (result.helpAction) baseDice += 1;
+  const gearList = getItemsList(me);
+  const gearInput = fields.createSelectInput({ id: 'gear', name: 'gear', options: gearList });
+  const gearField = fields.createFormGroup({ input: gearInput, label: 'Relevant pilot gear?' });
 
+  const helpInput = fields.createCheckboxInput({ id: 'helpAction', name: 'helpAction' });
+  const helpCheckbox = fields.createFormGroup({ input: helpInput, label: 'Help provided?' });
+
+  const backgrounds = makeRadioButtons(radioOptions, "Background effect:", "background");
+
+  let dropdowns = '';
+  if (skillList.length > 1) dropdowns += skillsField.outerHTML;
+  if (burdenList.length > 1) dropdowns += burdenField.outerHTML;
+  if (gearList.length > 1) dropdowns += gearField.outerHTML;
+
+  const result = await foundry.applications.api.DialogV2.wait({
+    window: { title: "Narrative Check" },
+    position: { width: 400 },
+    classes: ['narrative-dialog'],
+    content:
+      dropdowns
+      + helpCheckbox.outerHTML
+      + "<div style='font-size:12px; color: yellow; font-weight: 600; margin-top: -10px;'>!! WARNING: providing help exposes the helping character to any consequences that result from this check !!</div>"
+      + backgrounds
+      + manualField.outerHTML
+      + "<div style='font-size:12px; color: mistyrose; font-weight: 600; margin-top: -10px;'>## INFO: apply any additional accuracy or difficulty (from character drive, situation, etc) here ##</div>"
+      + positionField.outerHTML,
+    buttons: [,
+      submitButton,
+      cancelButton
+    ]
+  });
+  if (!!result && result !== 'cancel') {
+    const skillValue = parseInt(result.skills.split("|")[1]);
+    const skillName = result.skills.split("|")[0];
+
+    const addSkills = skillValue;
+    const addGear = parseInt(result.gear ?? '0');
+    const subBurdens = parseInt(result.burdens ?? '0');
+    const manMod = parseInt(result.override);
+    const addBg = parseInt(result.background);
+
+    baseDice += addSkills + addGear + subBurdens + manMod + addBg;
+
+    if (result.helpAction) baseDice += 1;
+
+    const roll = await rollDice();
+
+    let msg = buildResultMsg(roll, getDiceFromRoll(roll), skillName, result.position);
+
+    const cm = await ChatMessage.create({
+      user: game.user._id,
+      content: msg
+    });
+  }
+}
+
+async function gmFlow() {
+  const result = await foundry.applications.api.DialogV2.wait({
+    window: { title: "Narrative Check" },
+    position: { width: 400 },
+    classes: ['narrative-dialog'],
+    content:
+      + manualField.outerHTML
+      + positionField.outerHTML,
+    buttons: [,
+      submitButton,
+      cancelButton
+    ]
+  });
+  if (!!result && result !== 'cancel') {
+    const manMod = parseInt(result.override);
+    baseDice += manMod;
+
+    const roll = await rollDice();
+
+    let msg = buildGmResultMsg(roll, getDiceFromRoll(roll), result.position);
+
+    const cm = await ChatMessage.create({
+      user: game.user._id,
+      content: msg
+    });
+  }
+}
+
+async function rollDice() {
   let r;
 
   //cannot roll more than 6 dice
@@ -132,23 +162,7 @@ if (!!result && result !== 'cancel') {
   else r = new Roll(`${baseDice}d6kh1`);
 
   await r.evaluate();
-
-  let msg = buildResultMsg(r, getDiceFromRoll(r), skillName, result.position);
-
-  //todo generate message including skill used (or unskilled)
-  //include roll formula and total
-  //include twist if there
-  //include all dice and highlight ones that are used
-  const cm = await ChatMessage.create({
-    user: game.user._id,
-    content: msg
-  });
-
-  //let btn = document.getElementById("mystupidbutton")
-  // console.log(btn);
-
-  // btn?.addEventListener("click",(e)=>{ console.log('fuck')});
-  //console.log(btn);
+  return r;
 }
 
 function getSkillsList(me) {
@@ -272,7 +286,27 @@ function buildResultMsg(r, dice, skill, pos) {
 
   msg += "<div style='font-weight: bold; font-size: 16px'>" + outcome + " // " + resultAliases.get(outcome) + "</div>";
   if (twist) msg += "<div style='font-weight: bold; font-size: 14px; color: maroon;'>!! with a twist !!</div>";
-  if (twist) msg += "<div>"+twistTable.get(outcome)+"</div>";
+  if (twist) msg += "<div>" + twistTable.get(outcome) + "</div>";
+  msg += '<hr/>';
+  msg += "</div>";
+  //msg += '<br/><button type="button" id="mystupidbutton">button</button>';
+
+  return msg;
+}
+
+function buildGmResultMsg(r, dice, pos) {
+  const twist = findTwist(dice);
+  const outcome = getSuccess(dice);
+  let msg = "<h6 style='font-style: italic; font-size: 18px '>" + pos + " Check </h6>";
+  msg += "<div style='border: 2px solid black; border-radius: 5px; padding: 8px;'>";
+  msg += "<div style='font-size: 12px; width: max-content; border-bottom: 1px solid black'> [ Rolled " + r + " ] </div>";
+
+  msg += getDiceDisplay(dice, twist) + "<br/>";
+
+
+  msg += "<div style='font-weight: bold; font-size: 16px'>" + outcome + " // " + resultAliases.get(outcome) + "</div>";
+  if (twist) msg += "<div style='font-weight: bold; font-size: 14px; color: maroon;'>!! with a twist !!</div>";
+  if (twist) msg += "<div>" + twistTable.get(outcome) + "</div>";
   msg += '<hr/>';
   msg += "</div>";
   //msg += '<br/><button type="button" id="mystupidbutton">button</button>';
