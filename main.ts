@@ -67,7 +67,7 @@ const result = await foundry.applications.api.DialogV2.wait({
     //free modifier number input
     //!TODO currently displaying as text input without click steps
     manualField.outerHTML
-  + positionField.outerHTML,
+    + positionField.outerHTML,
   buttons: [{
     action: "submit",
     label: "Confirm",
@@ -86,7 +86,7 @@ const result = await foundry.applications.api.DialogV2.wait({
       return null; // This value is returned by the 'wait' promise
     }
   }
-]
+  ]
 });
 
 if (!!result && result !== 'cancel') {
@@ -116,7 +116,7 @@ if (!!result && result !== 'cancel') {
 
   await r.evaluate();
 
-  let msg = buildResultMsg(r, getDiceFromRoll(r), skillName);
+  let msg = buildResultMsg(r, getDiceFromRoll(r), skillName, result.position);
 
   //todo generate message including skill used (or unskilled)
   //include roll formula and total
@@ -243,14 +243,32 @@ function findTwist(dice) {
   else return dice[0] === dice[1];
 }
 
-function buildResultMsg(r, dice, skill) {
-  let msg = skill + " Check <br/>";
-  msg += r + "<br/>";
-  msg += dice.join(', ') + '<br/>';
+function buildResultMsg(r, dice, skill, pos) {
+  const twist = findTwist(dice);
+  let msg = "<h6 style='font-style: italic; font-size: 18px '>" + pos + " " + skill + " Check </h6>";
+  msg += "<div style='border: 2px solid black; border-radius: 5px; padding: 8px;'> Rolled " + r + "<br/>"
+
+  msg += getDiceDisplay(dice, twist) + "<br/>";
+
+
   msg += getSuccess(dice);
   if (findTwist(dice)) msg += ' with a twist!';
+  msg += "</div>";
   //msg += '<br/><button type="button" id="mystupidbutton">button</button>';
 
+  return msg;
+}
+
+function getDiceDisplay(dice, twist) {
+  let msg = '';
+  for (let i = 0; i < dice.length; i++) {
+    let color = 'gray';
+    if (i === 0) color = 'navy';
+    else if (i === 1 && twist) color = 'maroon';
+    msg += "<span style='margin: 2px; padding: 0 7px 0 7px; font-weight: bold; font-size: 20px; border: 2px solid " + color + "; color: " + color + "; line-height: 28px;'>";
+    msg += dice[i];
+    msg += "</span>";
+  }
   return msg;
 }
 
