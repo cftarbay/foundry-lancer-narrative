@@ -89,6 +89,11 @@ const result = await foundry.applications.api.DialogV2.wait({
   ]
 });
 
+const twistTable = new Map();
+twistTable.set("Triumph", "The action succeeds spectacularly, or something extremely useful is uncovered.");
+twistTable.set("Conflict", "The situation changes in some unexpected or unusual way.");
+twistTable.set("Disaster", "Something has gone spectacularly wrong.");
+
 if (!!result && result !== 'cancel') {
   const skillValue = parseInt(result.skills.split("|")[1]);
   const skillName = result.skills.split("|")[0];
@@ -233,9 +238,9 @@ function getDiceFromRoll(r) {
 }
 
 function getSuccess(dice) {
-  if (dice[0] === 6) return "Complete Success";
-  else if (dice[0] > 3) return "Partial Success";
-  else return "Failure";
+  if (dice[0] === 6) return "Triumph"; //complete success
+  else if (dice[0] > 3) return "Conflict"; //partial success
+  else return "Disaster"; //failure
 }
 
 function findTwist(dice) {
@@ -245,14 +250,15 @@ function findTwist(dice) {
 
 function buildResultMsg(r, dice, skill, pos) {
   const twist = findTwist(dice);
+  const outcome = getSuccess(dice);
   let msg = "<h6 style='font-style: italic; font-size: 18px '>" + pos + " " + skill + " Check </h6>";
   msg += "<div style='border: 2px solid black; border-radius: 5px; padding: 8px;'> Rolled " + r + "<br/>"
 
   msg += getDiceDisplay(dice, twist) + "<br/>";
 
 
-  msg += getSuccess(dice);
-  if (findTwist(dice)) msg += ' with a twist!';
+  msg += outcome;
+  if (twist) msg += ' with a twist! <br/>'+twistTable.get(outcome);
   msg += "</div>";
   //msg += '<br/><button type="button" id="mystupidbutton">button</button>';
 
