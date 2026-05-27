@@ -136,15 +136,20 @@ async function gmFlow() {
   });
   if (!!result && result !== 'cancel') {
     const manMod = parseInt(result.override);
-    baseDice += manMod;
+    //we want gm input to just be the number rolled except in the case of 0
+    if (manMod === 0) baseDice = 1;
+    else baseDice = manMod;
 
     const roll = await rollDice();
 
     let msg = buildGmResultMsg(roll, getDiceFromRoll(roll), result.position);
 
+    const uid = game.user.id;
+
     const cm = await ChatMessage.create({
       user: game.user._id,
-      content: msg
+      content: msg,
+      whisper: uid
     });
   }
 }
@@ -158,7 +163,6 @@ async function rollDice() {
   //if less than one die base, roll at disadvantage
   if (baseDice < 1) r = new Roll(`2d6kl1`);
   else if (baseDice === 1) r = new Roll('1d6');
-  else if (baseDice === 2) r = new Roll('2d6kh1');
   else r = new Roll(`${baseDice}d6kh1`);
 
   await r.evaluate();
