@@ -1,6 +1,9 @@
 let baseDice = 1;
 
-const me = game.user.character;
+let me;
+if(!game.user.isActiveGM)
+me = game.user.character;
+else {me = null;console.log('its u')}
 const fields = foundry.applications.fields;
 
 const radioOptions = [
