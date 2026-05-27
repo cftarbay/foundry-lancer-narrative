@@ -61,12 +61,14 @@ const result = await foundry.applications.api.DialogV2.wait({
     styles
     + dropdowns
     + helpCheckbox.outerHTML
-    + "<div style='font-size:11px; color: yellow; font-weight: bold; margin-top: -10px;'>## WARNING ## providing help exposes the helping character to any consequences that result from this check</div>"
+    + "<div style='font-size:12px; color: yellow; font-weight: 600; margin-top: -10px;'>!! WARNING: providing help exposes the helping character to any consequences that result from this check !!</div>"
     + backgrounds
     +
     //free modifier number input
     //!TODO currently displaying as text input without click steps
     manualField.outerHTML
+
+    + "<div style='font-size:12px; color: mistyrose; font-weight: 600; margin-top: -10px;'>## INFO: apply any additional accuracy or difficulty (from character drive, situation, etc) here ##</div>"
     + positionField.outerHTML,
   buttons: [{
     action: "submit",
@@ -93,6 +95,13 @@ const twistTable = new Map();
 twistTable.set("Triumph", "The action succeeds spectacularly, or something extremely useful is uncovered.");
 twistTable.set("Conflict", "The situation changes in some unexpected or unusual way.");
 twistTable.set("Disaster", "Something has gone spectacularly wrong.");
+
+const resultAliases = new Map();
+resultAliases.set("Triumph", "Complete Success");
+resultAliases.set("Conflict", "Partial Success");
+resultAliases.set("Disaster", "Failure");
+
+
 
 if (!!result && result !== 'cancel') {
   const skillValue = parseInt(result.skills.split("|")[1]);
@@ -252,13 +261,16 @@ function buildResultMsg(r, dice, skill, pos) {
   const twist = findTwist(dice);
   const outcome = getSuccess(dice);
   let msg = "<h6 style='font-style: italic; font-size: 18px '>" + pos + " " + skill + " Check </h6>";
-  msg += "<div style='border: 2px solid black; border-radius: 5px; padding: 8px;'> Rolled " + r + "<br/>"
+  msg += "<div style='border: 2px solid black; border-radius: 5px; padding: 8px;'>";
+  msg += "<div style='font-size: 12px; width: max-content; border-bottom: 1px solid black'> [ Rolled " + r + " ] </div>";
 
   msg += getDiceDisplay(dice, twist) + "<br/>";
 
 
-  msg += outcome;
-  if (twist) msg += ' with a twist! <br/>'+twistTable.get(outcome);
+  msg += "<div style='font-weight: bold; font-size: 16px'>" + outcome + " // " + resultAliases.get(outcome) + "</div>";
+  if (twist) msg += "<div style='font-weight: bold; font-size: 14px; color: maroon;'>!! with a twist !!</div>";
+  if (twist) msg += "<div>"+twistTable.get(outcome)+"</div>";
+  msg += '<hr/>';
   msg += "</div>";
   //msg += '<br/><button type="button" id="mystupidbutton">button</button>';
 
@@ -266,7 +278,7 @@ function buildResultMsg(r, dice, skill, pos) {
 }
 
 function getDiceDisplay(dice, twist) {
-  let msg = '';
+  let msg = '<div style="background-color:whitesmoke; padding: 6px; width: max-content; margin-top: 4px; ">';
   for (let i = 0; i < dice.length; i++) {
     let color = 'gray';
     if (i === 0) color = 'navy';
@@ -275,6 +287,7 @@ function getDiceDisplay(dice, twist) {
     msg += dice[i];
     msg += "</span>";
   }
+  msg += "</div>"
   return msg;
 }
 
