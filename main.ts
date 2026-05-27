@@ -50,13 +50,13 @@ const manualInput = fields.createNumberInput({ id: 'override', name: 'override',
 const manualField = fields.createFormGroup({ input: manualInput, label: 'Manual modifier' });
 
 let me;
-if (!game.user.isActiveGM){
-  me = game.user.character;
+if (!game.user.isActiveGM)
   await playerFlow();
-}
-else { me = null; console.log('its u'); await gmFlow(); }
+else
+  await gmFlow();
 
 async function playerFlow() {
+  const me = game.user.character;
   const skillList = getSkillsList(me);
   const skillsInput = fields.createSelectInput({ id: 'skills', name: 'skills', options: skillList });
   const skillsField = fields.createFormGroup({ input: skillsInput, label: 'Relevant skill?' });
@@ -127,7 +127,7 @@ async function gmFlow() {
     position: { width: 400 },
     classes: ['narrative-dialog'],
     content:
-      + manualField.outerHTML
+      manualField.outerHTML
       + positionField.outerHTML,
     buttons: [,
       submitButton,
