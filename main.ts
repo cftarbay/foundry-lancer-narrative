@@ -9,6 +9,12 @@ const radioOptions = [
   { value: 0, label: 'None', selected: true }
 ];
 
+const positionOptions = [
+  { value: "Controlled", label: 'Controlled' },
+  { value: 'Risky', label: 'Risky' },
+  { value: 'Desperate', label: 'Desperate' }
+]
+
 const skillList = getSkillsList(me);
 const skillsInput = fields.createSelectInput({ id: 'skills', name: 'skills', options: skillList });
 const skillsField = fields.createFormGroup({ input: skillsInput, label: 'Relevant skill?' });
@@ -20,6 +26,9 @@ const burdenField = fields.createFormGroup({ input: burdenInput, label: 'Relevan
 const gearList = getItemsList(me);
 const gearInput = fields.createSelectInput({ id: 'gear', name: 'gear', options: gearList });
 const gearField = fields.createFormGroup({ input: gearInput, label: 'Relevant pilot gear?' });
+
+const positionInput = fields.createSelectInput({ id: 'position', name: 'position', options: positionOptions });
+const positionField = fields.createFormGroup({ input: positionInput, label: 'Position' });
 
 const helpInput = fields.createCheckboxInput({ id: 'helpAction', name: 'helpAction' });
 const helpCheckbox = fields.createFormGroup({ input: helpInput, label: 'Help provided?' });
@@ -51,12 +60,14 @@ const result = await foundry.applications.api.DialogV2.wait({
   content:
     styles
     + dropdowns
-    + `${helpCheckbox.outerHTML}`
+    + helpCheckbox.outerHTML
+    + "<div style='font-size:11px; color: yellow; font-weight: bold; margin-top: -10px;'>## WARNING ## providing help exposes the helping character to any consequences that result from this check</div>"
     + backgrounds
     +
     //free modifier number input
     //!TODO currently displaying as text input without click steps
-    `${manualField.outerHTML}`,
+    manualField.outerHTML
+  + positionField.outerHTML,
   buttons: [{
     action: "submit",
     label: "Confirm",
@@ -75,7 +86,7 @@ const result = await foundry.applications.api.DialogV2.wait({
       return null; // This value is returned by the 'wait' promise
     }
   }
-  ]
+]
 });
 
 if (!!result && result !== 'cancel') {
@@ -117,9 +128,9 @@ if (!!result && result !== 'cancel') {
   });
 
   //let btn = document.getElementById("mystupidbutton")
- // console.log(btn);
-  
- // btn?.addEventListener("click",(e)=>{ console.log('fuck')});
+  // console.log(btn);
+
+  // btn?.addEventListener("click",(e)=>{ console.log('fuck')});
   //console.log(btn);
 }
 
@@ -238,7 +249,7 @@ function buildResultMsg(r, dice, skill) {
   msg += dice.join(', ') + '<br/>';
   msg += getSuccess(dice);
   if (findTwist(dice)) msg += ' with a twist!';
- //msg += '<br/><button type="button" id="mystupidbutton">button</button>';
+  //msg += '<br/><button type="button" id="mystupidbutton">button</button>';
 
   return msg;
 }
