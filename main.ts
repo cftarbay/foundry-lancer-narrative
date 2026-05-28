@@ -68,11 +68,25 @@ const positionField = fields.createFormGroup({ input: positionInput, label: 'Pos
 const manualInput = fields.createNumberInput({ id: 'override', name: 'override', min: -5, max: 8, step: 1, value: 0 });
 const manualField = fields.createFormGroup({ input: manualInput, label: 'Manual modifier' });
 
+//override dialog onrender to apply style to dialog contents allowing them to scroll if window is too small
+class customDialog extends foundry.applications.api.DialogV2 {
+  _onRender(options) {
+    let narrativeChecks = document.getElementsByClassName('narrativeDialog');
+
+    if (narrativeChecks && narrativeChecks.length > 0) {
+      let style = narrativeChecks[0].style;
+      style['overflow-y'] = 'scroll';
+    }
+  }
+}
+
 let me;
 if (!game.user.isActiveGM)
   await playerFlow();
 else
   await gmFlow();
+
+
 
 async function playerFlow() {
   const me = game.user.character;
@@ -98,8 +112,8 @@ async function playerFlow() {
   if (burdenList.length > 1) dropdowns += burdenField.outerHTML;
   if (gearList.length > 1) dropdowns += gearField.outerHTML;
 
-  const result = await foundry.applications.api.DialogV2.wait({
-    window: { title: "Narrative Check" },
+  const result = await customDialog.wait({
+    window: { title: "Narrative Check", resizable: true, contentClasses: ['narrativeDialog'] },
     position: { width: 400 },
     classes: ['narrative-dialog'],
     content:
@@ -111,7 +125,7 @@ async function playerFlow() {
       + "<div style='font-size:12px; color: pink; font-weight: 600; margin-top: -10px;'>## INFO: apply any additional accuracy or difficulty (from pushing the roll, character drive, situation, etc) here ##</div>"
       + positionField.outerHTML
       + "<div style='font-size:12px; color: pink; font-weight: 600; margin-top: -10px;'>## INFO: position determines the severity of potential consequences resulting from this check ##</div>"
-    ,buttons: [,
+    , buttons: [,
       submitButton,
       cancelButton
     ]
@@ -142,8 +156,8 @@ async function playerFlow() {
 }
 
 async function gmFlow() {
-  const result = await foundry.applications.api.DialogV2.wait({
-    window: { title: "Narrative Check" },
+  const result = await customDialog.wait({
+    window: { title: "Narrative Check", resizable: true, contentClasses: ['narrativeDialog']  },
     position: { width: 400 },
     classes: ['narrative-dialog'],
     content:
