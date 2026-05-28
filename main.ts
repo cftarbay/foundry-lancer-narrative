@@ -43,9 +43,26 @@ resultAliases.set("Triumph", "Complete Success");
 resultAliases.set("Conflict", "Partial Success");
 resultAliases.set("Disaster", "Failure");
 
+//todo this should be a 2d array but who cares
+const resultControlledTable = new Map();
+resultControlledTable.set("Triumph", "The action succeeds with no complications.");
+resultControlledTable.set("Conflict", "The action succeeds, but incurs a minor consequence.");
+resultControlledTable.set("Disaster", "The action fails, and also incurs a minor consequence or introduces a minor narrative complication to the scene.");
+
+const resultRiskyTable = new Map();
+resultRiskyTable.set("Triumph", "The action succeeds with no complications.");
+resultRiskyTable.set("Conflict", "The action succeeds, but incurs a consequence or introduces a narrative complication to the scene.");
+resultRiskyTable.set("Disaster", "The action fails, and also incurs a consequence or introduces a narrative complication to the scene.");
+
+const resultDesperateTable = new Map();
+resultDesperateTable.set("Triumph", "The action succeeds with no complications.");
+resultDesperateTable.set("Conflict", "The action succeeds, but incurs a severe consequence or introduces a major narrative complication to the scene.");
+resultDesperateTable.set("Disaster", "The action fails, and also incurs a severe consequence or introduces a major narrative complication to the scene.");
+
 const positionInput = fields.createSelectInput({ id: 'position', name: 'position', options: positionOptions });
 const positionField = fields.createFormGroup({ input: positionInput, label: 'Position' });
 
+//todo this is not displaying with steps for number selection and is instead a plain text field
 const manualInput = fields.createNumberInput({ id: 'override', name: 'override', min: -5, max: 8, step: 1, value: 0 });
 const manualField = fields.createFormGroup({ input: manualInput, label: 'Manual modifier' });
 
@@ -112,7 +129,7 @@ async function playerFlow() {
 
     const roll = await rollDice();
 
-    let msg = buildResultMsg(roll, getDiceFromRoll(roll), skillName, result.position);
+    let msg = buildResultMsg(roll, getDiceFromRoll(roll), result.position, skillName);
 
     const cm = await ChatMessage.create({
       user: game.user._id,
@@ -142,7 +159,7 @@ async function gmFlow() {
 
     const roll = await rollDice();
 
-    let msg = buildGmResultMsg(roll, getDiceFromRoll(roll), result.position);
+    let msg = buildResultMsg(roll, getDiceFromRoll(roll), result.position);
 
     const uid = game.user.id;
 
@@ -232,12 +249,10 @@ function makeRadioButtons(opts, name, group) {
   for (let s of opts) {
     set += "<div style='display: flex; flex-direction: row;'>";
     set += "<input type='radio' id='" + s.label + "' name='" + group + "' value=" + s.value;
-    //set = applyStyles(set, 'flex-direction: row;');
     if (s?.selected)
       set += " checked>";
     else set += ">";
     set += "<label for='" + s.label + "' ";
-    //set = applyStyles(set, 'flex-direction: row;');
 
     set += ">" + s.label + "</label>";
 
@@ -278,48 +293,30 @@ function findTwist(dice) {
   else return dice[0] === dice[1];
 }
 
-function buildResultMsg(r, dice, skill, pos) {
+function buildResultMsg(r, dice, pos, skill = '') {
   const twist = findTwist(dice);
   const outcome = getSuccess(dice);
   let msg = "<h6 style='font-style: italic; font-size: 18px '>" + pos + " " + skill + " Check </h6>";
   msg += "<div style='border: 2px solid black; border-radius: 5px; padding: 8px;'>";
   msg += "<div style='font-size: 12px; width: max-content; border-bottom: 1px solid black'> [ Rolled " + r + " ] </div>";
 
-  msg += getDiceDisplay(dice, twist) + "<br/>";
+  msg += getDiceDisplay(dice, twist);
 
-
-  msg += "<div style='font-weight: bold; font-size: 16px'>" + outcome + " // " + resultAliases.get(outcome) + "</div>";
+  msg += "<div style='font-weight: bold; font-size: 16px; margin-top: 10px;'>" + outcome + " // " + resultAliases.get(outcome) + "</div>";
   if (twist) msg += "<div style='font-weight: bold; font-size: 14px; color: maroon;'>!! with a twist !!</div>";
+  msg += '<hr style="margin-top: 2px; margin-bottom: 2px;"/>';
+  let map = resultControlledTable;
+  if (pos === 'Risky') map = resultRiskyTable;
+  else if (pos === 'Desperate') map = resultDesperateTable;
+  msg += "<div>" + map.get(outcome) + "</div>";
   if (twist) msg += "<div>" + twistTable.get(outcome) + "</div>";
-  msg += '<hr/>';
   msg += "</div>";
-  //msg += '<br/><button type="button" id="mystupidbutton">button</button>';
-
-  return msg;
-}
-
-function buildGmResultMsg(r, dice, pos) {
-  const twist = findTwist(dice);
-  const outcome = getSuccess(dice);
-  let msg = "<h6 style='font-style: italic; font-size: 18px '>" + pos + " Check </h6>";
-  msg += "<div style='border: 2px solid black; border-radius: 5px; padding: 8px;'>";
-  msg += "<div style='font-size: 12px; width: max-content; border-bottom: 1px solid black'> [ Rolled " + r + " ] </div>";
-
-  msg += getDiceDisplay(dice, twist) + "<br/>";
-
-
-  msg += "<div style='font-weight: bold; font-size: 16px'>" + outcome + " // " + resultAliases.get(outcome) + "</div>";
-  if (twist) msg += "<div style='font-weight: bold; font-size: 14px; color: maroon;'>!! with a twist !!</div>";
-  if (twist) msg += "<div>" + twistTable.get(outcome) + "</div>";
-  msg += '<hr/>';
-  msg += "</div>";
-  //msg += '<br/><button type="button" id="mystupidbutton">button</button>';
 
   return msg;
 }
 
 function getDiceDisplay(dice, twist) {
-  let msg = '<div style="background-color:whitesmoke; padding: 6px; width: max-content; margin-top: 4px; ">';
+  let msg = '<div style="background-color:whitesmoke; padding: 6px; width: max-content; margin-top: 4px; margin-bottom: 3px; ">';
   for (let i = 0; i < dice.length; i++) {
     let color = 'gray';
     if (i === 0) color = 'navy';
@@ -330,14 +327,4 @@ function getDiceDisplay(dice, twist) {
   }
   msg += "</div>"
   return msg;
-}
-
-function createStyleTag() {
-  return `
-<style>
-#override { appearance: auto !important;
-font-size: 60px; }
-color: #ff0000 !important;
-</style>
-  `
 }
