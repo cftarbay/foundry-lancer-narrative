@@ -1,5 +1,7 @@
 let baseDice = 1;
 const fields = foundry.applications.fields;
+let verbose = true;
+let twistVerbose = true;
 
 const radioOptions = [
   { value: 1, label: 'Accuracy' },
@@ -9,7 +11,7 @@ const radioOptions = [
 
 const positionOptions = [
   { value: "Controlled", label: 'Controlled' },
-  { value: 'Risky', label: 'Risky' },
+  { value: 'Risky', label: 'Risky', selected: true },
   { value: 'Desperate', label: 'Desperate' }
 ];
 
@@ -106,9 +108,10 @@ async function playerFlow() {
       + "<div style='font-size:12px; color: yellow; font-weight: 600; margin-top: -10px;'>!! WARNING: providing help exposes the helping character to any consequences that result from this check !!</div>"
       + backgrounds
       + manualField.outerHTML
-      + "<div style='font-size:12px; color: mistyrose; font-weight: 600; margin-top: -10px;'>## INFO: apply any additional accuracy or difficulty (from character drive, situation, etc) here ##</div>"
-      + positionField.outerHTML,
-    buttons: [,
+      + "<div style='font-size:12px; color: pink; font-weight: 600; margin-top: -10px;'>## INFO: apply any additional accuracy or difficulty (from pushing the roll, character drive, situation, etc) here ##</div>"
+      + positionField.outerHTML
+      + "<div style='font-size:12px; color: pink; font-weight: 600; margin-top: -10px;'>## INFO: position determines the severity of potential consequences resulting from this check ##</div>"
+    ,buttons: [,
       submitButton,
       cancelButton
     ]
@@ -244,11 +247,11 @@ function getItemsList(me) {
 
 function makeRadioButtons(opts, name, group) {
   //open html fieldset
-  let set = "<fieldset style='display: flex; flex-direction: column;'> <legend>" + name + "</legend>";
+  let set = "<fieldset style='display: flex; flex-direction: column; padding: 0.5rem'> <legend>" + name + "</legend>";
   //populate options
   for (let s of opts) {
-    set += "<div style='display: flex; flex-direction: row;'>";
-    set += "<input type='radio' id='" + s.label + "' name='" + group + "' value=" + s.value;
+    set += "<div style='display: flex; flex-direction: row; height: 20px;'>";
+    set += "<input style='margin-top:-2px;' type='radio' id='" + s.label + "' name='" + group + "' value=" + s.value;
     if (s?.selected)
       set += " checked>";
     else set += ">";
@@ -304,12 +307,16 @@ function buildResultMsg(r, dice, pos, skill = '') {
 
   msg += "<div style='font-weight: bold; font-size: 16px; margin-top: 10px;'>" + outcome + " // " + resultAliases.get(outcome) + "</div>";
   if (twist) msg += "<div style='font-weight: bold; font-size: 14px; color: maroon;'>!! with a twist !!</div>";
-  msg += '<hr style="margin-top: 2px; margin-bottom: 2px;"/>';
-  let map = resultControlledTable;
-  if (pos === 'Risky') map = resultRiskyTable;
-  else if (pos === 'Desperate') map = resultDesperateTable;
-  msg += "<div>" + map.get(outcome) + "</div>";
-  if (twist) msg += "<div>" + twistTable.get(outcome) + "</div>";
+
+  if (verbose || (twistVerbose && twist)) msg += '<hr style="margin-top: 3px; margin-bottom: 3px;"/>';
+  if (verbose) {
+    let map = resultControlledTable;
+    if (pos === 'Risky') map = resultRiskyTable;
+    else if (pos === 'Desperate') map = resultDesperateTable;
+    msg += "<div>" + map.get(outcome) + "</div>";
+  }
+  if (verbose && twistVerbose && twist) msg += "<br/>";
+  if (twistVerbose && twist) msg += "<div>" + twistTable.get(outcome) + "</div>";
   msg += "</div>";
 
   return msg;
