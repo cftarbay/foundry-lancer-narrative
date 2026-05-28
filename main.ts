@@ -119,12 +119,12 @@ async function playerFlow() {
     content:
       dropdowns
       + helpCheckbox.outerHTML
-      + "<div style='font-size:12px; color: yellow; font-weight: 600; margin-top: -10px;'>!! WARNING: providing help exposes the helping character to any consequences that result from this check !!</div>"
+      + "<div style='font-size:0.8rem; color: yellow; font-weight: 600; margin-top: -10px;'>!! WARNING: providing help exposes the helping character to any consequences that result from this check !!</div>"
       + backgrounds
       + manualField.outerHTML
-      + "<div style='font-size:12px; color: pink; font-weight: 600; margin-top: -10px;'>## INFO: apply any additional accuracy or difficulty (from pushing the roll, character drive, situation, etc) here ##</div>"
+      + "<div style='font-size:0.8rem; color: pink; font-weight: 600; margin-top: -10px;'>## INFO: apply any additional accuracy or difficulty (from pushing the roll, character drive, situation, etc) here ##</div>"
       + positionField.outerHTML
-      + "<div style='font-size:12px; color: pink; font-weight: 600; margin-top: -10px;'>## INFO: position determines the severity of potential consequences resulting from this check ##</div>"
+      + "<div style='font-size:0.8rem; color: pink; font-weight: 600; margin-top: -10px;'>## INFO: position determines the severity of potential consequences resulting from this check ##</div>"
     , buttons: [,
       submitButton,
       cancelButton
@@ -313,14 +313,14 @@ function findTwist(dice) {
 function buildResultMsg(r, dice, pos, skill = '') {
   const twist = findTwist(dice);
   const outcome = getSuccess(dice);
-  let msg = "<h6 style='font-style: italic; font-size: 18px '>" + pos + " " + skill + " Check </h6>";
+  let msg = "<h6 style='font-style: italic; font-size: 1.2rem '>" + pos + " " + skill + " Check </h6>";
   msg += "<div style='border: 2px solid black; border-radius: 5px; padding: 8px;'>";
-  msg += "<div style='font-size: 12px; width: max-content; border-bottom: 1px solid black'> [ Rolled " + r + " ] </div>";
+  msg += "<div style='font-size: 0.8rem; width: max-content; border-bottom: 1px solid black'> [ Rolled " + r + " ] </div>";
 
   msg += getDiceDisplay(dice, twist);
 
-  msg += "<div style='font-weight: bold; font-size: 16px; margin-top: 10px;'>" + outcome + " // " + resultAliases.get(outcome) + "</div>";
-  if (twist) msg += "<div style='font-weight: bold; font-size: 14px; color: maroon;'>!! with a twist !!</div>";
+  msg += "<div style='font-weight: bold; font-size: 1.1rem; margin-top: 10px;'>" + outcome + " // " + resultAliases.get(outcome) + "</div>";
+  if (twist) msg += "<div style='font-weight: bold; font-size: 1.05rem; color: maroon;'>!! with a twist !!</div>";
 
   if (verbose || (twistVerbose && twist)) msg += '<hr style="margin-top: 3px; margin-bottom: 3px;"/>';
   if (verbose) {
@@ -342,7 +342,7 @@ function getDiceDisplay(dice, twist) {
     let color = 'gray';
     if (i === 0) color = 'navy';
     else if (i === 1 && twist) color = 'maroon';
-    msg += "<span style='margin: 2px; padding: 0 7px 0 7px; font-weight: bold; font-size: 20px; border: 2px solid " + color + "; color: " + color + "; line-height: 28px;'>";
+    msg += "<span style='margin: 2px; padding: 0 7px 0 7px; font-weight: bold; font-size: 1.3rem; border: 2px solid " + color + "; color: " + color + "; line-height: 28px;'>";
     msg += dice[i];
     msg += "</span>";
   }
