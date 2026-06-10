@@ -35,10 +35,7 @@ const cancelButton = {
   }
 };
 
-const twistTable = new Map();
-twistTable.set("Triumph", "The action succeeds spectacularly, or something extremely useful is uncovered.");
-twistTable.set("Conflict", "The situation changes in some unexpected or unusual way.");
-twistTable.set("Disaster", "Something has gone spectacularly wrong.");
+const twistTxt = "Something unexpected, unusual, or unintended happens."
 
 const resultAliases = new Map();
 resultAliases.set("Triumph", "Complete Success");
@@ -47,17 +44,17 @@ resultAliases.set("Disaster", "Failure");
 
 //todo this should be a 2d array but who cares
 const resultControlledTable = new Map();
-resultControlledTable.set("Triumph", "The action succeeds with no complications.");
+resultControlledTable.set("Triumph", "The action succeeds.");
 resultControlledTable.set("Conflict", "The action succeeds, but incurs a minor consequence.");
 resultControlledTable.set("Disaster", "The action fails, and also incurs a minor consequence or introduces a minor narrative complication to the scene.");
 
 const resultRiskyTable = new Map();
-resultRiskyTable.set("Triumph", "The action succeeds with no complications.");
+resultRiskyTable.set("Triumph", "The action succeeds.");
 resultRiskyTable.set("Conflict", "The action succeeds, but incurs a consequence or introduces a narrative complication to the scene.");
 resultRiskyTable.set("Disaster", "The action fails, and also incurs a consequence or introduces a narrative complication to the scene.");
 
 const resultDesperateTable = new Map();
-resultDesperateTable.set("Triumph", "The action succeeds with no complications.");
+resultDesperateTable.set("Triumph", "The action succeeds.");
 resultDesperateTable.set("Conflict", "The action succeeds, but incurs a severe consequence or introduces a major narrative complication to the scene.");
 resultDesperateTable.set("Disaster", "The action fails, and also incurs a severe consequence or introduces a major narrative complication to the scene.");
 
@@ -67,6 +64,9 @@ const positionField = fields.createFormGroup({ input: positionInput, label: 'Pos
 //todo this is not displaying with steps for number selection and is instead a plain text field
 const manualInput = fields.createNumberInput({ id: 'override', name: 'override', min: -5, max: 8, step: 1, value: 0 });
 const manualField = fields.createFormGroup({ input: manualInput, label: 'Manual modifier' });
+
+const cutInput = fields.createNumberInput({ id: 'cut', name: 'cut', min: 0, max: 6, step: 1, value: 0 });
+const cutField = fields.createFormGroup({ input: cutInput, label: 'Cut' });
 
 //override dialog onrender to apply style to dialog contents allowing them to scroll if window is too small
 class customDialog extends foundry.applications.api.DialogV2 {
@@ -85,8 +85,6 @@ if (!game.user.isActiveGM)
   await playerFlow();
 else
   await gmFlow();
-
-
 
 async function playerFlow() {
   const me = game.user.character;
@@ -114,7 +112,7 @@ async function playerFlow() {
 
   const result = await customDialog.wait({
     window: { title: "Narrative Check", resizable: true, contentClasses: ['narrativeDialog'] },
-    position: { width: 400 },
+    position: { width: 460 },
     classes: ['narrative-dialog'],
     content:
       dropdowns
@@ -125,6 +123,8 @@ async function playerFlow() {
       + "<div style='font-size:0.8rem; color: pink; font-weight: 600; margin-top: -10px;'>## INFO: apply any additional accuracy or difficulty (from pushing the roll, character drive, situation, etc) here ##</div>"
       + positionField.outerHTML
       + "<div style='font-size:0.8rem; color: pink; font-weight: 600; margin-top: -10px;'>## INFO: position determines the severity of potential consequences resulting from this check ##</div>"
+      + cutField.outerHTML
+      + "<div style='font-size:0.8rem; color: palegreen; font-weight: 600; margin-top: -10px;'>## INFO: cut is a more dramatic difficulty modifier which removes the provided number of highest results. Ask your GM if cut applies, especially if this is a desperate roll or there are relevant penalties ##</div>"
     , buttons: [,
       submitButton,
       cancelButton
@@ -144,9 +144,13 @@ async function playerFlow() {
 
     if (result.helpAction) baseDice += 1;
 
-    const roll = await rollDice();
+    let cut = parseInt(result.cut);
+    //even if cutting have to allow one die to be rolled
+    if (cut >= baseDice) cut = baseDice - 1;
 
-    let msg = buildResultMsg(roll, getDiceFromRoll(roll), result.position, skillName);
+    const roll = await rollDice(cut);
+
+    let msg = buildResultMsg(roll, getDiceFromRoll(roll), result.position, cut, baseDice, skillName);
 
     const cm = await ChatMessage.create({
       user: game.user._id,
@@ -157,12 +161,14 @@ async function playerFlow() {
 
 async function gmFlow() {
   const result = await customDialog.wait({
-    window: { title: "Narrative Check", resizable: true, contentClasses: ['narrativeDialog']  },
-    position: { width: 400 },
+    window: { title: "Narrative Check", resizable: true, contentClasses: ['narrativeDialog'] },
+    position: { width: 460 },
     classes: ['narrative-dialog'],
     content:
       manualField.outerHTML
-      + positionField.outerHTML,
+      + positionField.outerHTML
+      + cutField.outerHTML
+    ,
     buttons: [,
       submitButton,
       cancelButton
@@ -174,9 +180,13 @@ async function gmFlow() {
     if (manMod === 0) baseDice = 1;
     else baseDice = manMod;
 
-    const roll = await rollDice();
+    let cut = parseInt(result.cut);
+    //even if cutting have to allow one die to be rolled
+    if (cut >= baseDice) cut = baseDice - 1;
 
-    let msg = buildResultMsg(roll, getDiceFromRoll(roll), result.position);
+    const roll = await rollDice(cut);
+
+    let msg = buildResultMsg(roll, getDiceFromRoll(roll), result.position, cut, baseDice);
 
     const uid = game.user.id;
 
@@ -188,16 +198,23 @@ async function gmFlow() {
   }
 }
 
-async function rollDice() {
+async function rollDice(cut) {
   let r;
 
   //cannot roll more than 6 dice
   if (baseDice > 6) baseDice = 6;
 
+  let dieString = '';
+
   //if less than one die base, roll at disadvantage
-  if (baseDice < 1) r = new Roll(`2d6kl1`);
-  else if (baseDice === 1) r = new Roll('1d6');
-  else r = new Roll(`${baseDice}d6kh1`);
+  if (baseDice < 1) dieString = '2d6kl1';
+  //if one die just roll
+  else if (baseDice === 1) dieString = '1d6';
+  //if cutting highest
+  else if (cut > 0) dieString = `${baseDice}d6dh${cut}kh1`;
+  else dieString = `${baseDice}d6kh1`;
+
+  r = new Roll(dieString);
 
   await r.evaluate();
   return r;
@@ -305,19 +322,31 @@ function getSuccess(dice) {
   else return "Disaster"; //failure
 }
 
-function findTwist(dice) {
+function findTwist(dice, cut) {
+  //only one die, no twist
   if (dice.length < 2) return false;
-  else return dice[0] === dice[1];
+  //if no cut, compare highest 2 dice
+  if (cut === 0) return dice[0] === dice[1];
+  //if cutting, skip over cut dice
+  if ((cut + 1) < dice.length) return dice[0] === dice[cut + 1];
+  //otherwise no twist
+  return false;
 }
 
-function buildResultMsg(r, dice, pos, skill = '') {
-  const twist = findTwist(dice);
+function buildResultMsg(r, dice, pos, cut, baseDice, skill = '') {
+  const twist = findTwist(dice, cut);
   const outcome = getSuccess(dice);
+
+  let dieRoll = baseDice + 'd6';
+  if (cut > 0)
+    dieRoll += ' (cut highest ' + cut + ')';
+  dieRoll += ' keep highest';
+
   let msg = "<h6 style='font-style: italic; font-size: 1.2rem '>" + pos + " " + skill + " Check </h6>";
   msg += "<div style='border: 2px solid black; border-radius: 5px; padding: 8px;'>";
-  msg += "<div style='font-size: 0.8rem; width: max-content; border-bottom: 1px solid black'> [ Rolled " + r + " ] </div>";
+  msg += "<div style='font-size: 0.8rem; width: max-content; border-bottom: 1px solid black'> [ Rolled " + dieRoll + " ] </div>";
 
-  msg += getDiceDisplay(dice, twist);
+  msg += getDiceDisplay(dice, twist, cut);
 
   msg += "<div style='font-weight: bold; font-size: 1.1rem; margin-top: 10px;'>" + outcome + " // " + resultAliases.get(outcome) + "</div>";
   if (twist) msg += "<div style='font-weight: bold; font-size: 1.05rem; color: maroon;'>!! with a twist !!</div>";
@@ -330,19 +359,28 @@ function buildResultMsg(r, dice, pos, skill = '') {
     msg += "<div>" + map.get(outcome) + "</div>";
   }
   if (verbose && twistVerbose && twist) msg += "<br/>";
-  if (twistVerbose && twist) msg += "<div>" + twistTable.get(outcome) + "</div>";
+  if (twistVerbose && twist) msg += "<div>" + twistTxt + "</div>";
   msg += "</div>";
 
   return msg;
 }
 
-function getDiceDisplay(dice, twist) {
+function getDiceDisplay(dice, twist, cut) {
   let msg = '<div style="background-color:whitesmoke; padding: 6px; width: max-content; margin-top: 4px; margin-bottom: 3px; ">';
   for (let i = 0; i < dice.length; i++) {
     let color = 'gray';
+    let deco = '';
+
+    //if first die, it is result- blue
     if (i === 0) color = 'navy';
-    else if (i === 1 && twist) color = 'maroon';
-    msg += "<span style='margin: 2px; padding: 0 7px 0 7px; font-weight: bold; font-size: 1.3rem; border: 2px solid " + color + "; color: " + color + "; line-height: 28px;'>";
+    //if cutting and we are on a cut-numbered die, gray and strike through
+    else if (cut > 0 && i <= cut) //deco = ' text-decoration: line-through #e7d1b1 3px;';
+      deco = ' background: linear-gradient(to left top, transparent 47%, currentColor 48%, currentColor 52%, transparent 53%);';
+    //if not cutting and twist, make second (twist) die red
+    else if (i === 1 && twist && cut === 0) color = 'maroon';
+    //if cutting and twist, make die after cut (twist) red
+    else if (twist && i === cut + 1) color = 'maroon';
+    msg += "<span style='margin: 2px; padding: 0 7px 0 7px; font-weight: bold; font-size: 1.3rem; border: 2px solid " + color + "; color: " + color + "; line-height: 28px;" + deco + "'>";
     msg += dice[i];
     msg += "</span>";
   }
