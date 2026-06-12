@@ -117,10 +117,10 @@ async function playerFlow() {
     content:
       dropdowns
       + helpCheckbox.outerHTML
-      + "<div style='font-size:0.8rem; color: yellow; font-weight: 600; margin-top: -10px;'>!! WARNING: providing help exposes the helping character to any consequences that result from this check !!</div>"
+      + "<div style='font-size:0.8rem; color: yellow; font-weight: 600; margin-top: -10px;'>!! WARNING: providing help forces the helping character to take stress (on a Risky or Desperate roll) and exposes them to any consequences that result from this check !!</div>"
       + backgrounds
       + manualField.outerHTML
-      + "<div style='font-size:0.8rem; color: pink; font-weight: 600; margin-top: -10px;'>## INFO: apply any additional accuracy or difficulty (from pushing the roll, character drive, situation, etc) here ##</div>"
+      + "<div style='font-size:0.8rem; color: pink; font-weight: 600; margin-top: -10px;'>## INFO: apply any additional accuracy or difficulty (from pushing the roll, character drive, situation, devil's bargain, etc) here ##</div>"
       + positionField.outerHTML
       + "<div style='font-size:0.8rem; color: pink; font-weight: 600; margin-top: -10px;'>## INFO: position determines the severity of potential consequences resulting from this check ##</div>"
       + cutField.outerHTML
