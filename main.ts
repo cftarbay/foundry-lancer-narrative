@@ -278,7 +278,7 @@ function getItemsList(me) {
 
 function makeRadioButtons(opts, name, group) {
   //open html fieldset
-  let set = "<fieldset style='display: flex; flex-direction: column; padding: 0.5rem'> <legend>" + name + "</legend>";
+  let set = "<fieldset style='display: flex; flex-direction: column; padding: 0.5rem; margin:0'> <legend>" + name + "</legend>";
   //populate options
   for (let s of opts) {
     set += "<div style='display: flex; flex-direction: row; height: 20px;'>";
