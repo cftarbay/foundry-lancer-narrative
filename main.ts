@@ -9,6 +9,18 @@ const radioOptions = [
   { value: 0, label: 'None', selected: true }
 ];
 
+const cutOptions = [
+  { value: 0, label: 'Normal', selected: true },
+  { value: 1, label: 'Difficult (Cut 1)' },
+  { value: 2, label: 'Heroic (Cut 2)' }
+];
+
+const effectOptions = [
+  { value: 'Limited' },
+  { value: 'Standard', selected: true },
+  { value: 'Great' }
+];
+
 const positionOptions = [
   { value: "Controlled", label: 'Controlled' },
   { value: 'Risky', label: 'Risky', selected: true },
@@ -31,11 +43,12 @@ const cancelButton = {
   label: "Cancel",
   default: false,
   callback: (event, button, dialog) => {
-    return null; // This value is returned by the 'wait' promise
+    return null;
   }
 };
 
-const twistTxt = "Something unexpected, unusual, or unintended happens."
+const twistTxt = "Something unexpected, unusual, or unintended happens.";
+const critTxt = "Your Effect is increased.";
 
 const resultAliases = new Map();
 resultAliases.set("Triumph", "Complete Success");
@@ -58,15 +71,18 @@ resultDesperateTable.set("Triumph", "The action succeeds, but may still introduc
 resultDesperateTable.set("Conflict", "The action succeeds, but incurs a severe consequence, significant stress, or introduces a major narrative complication to the scene.");
 resultDesperateTable.set("Disaster", "The action fails, and also incurs a severe consequence, significant stress, or introduces a major narrative complication to the scene.");
 
-const positionInput = fields.createSelectInput({ id: 'position', name: 'position', options: positionOptions });
-const positionField = fields.createFormGroup({ input: positionInput, label: 'Position' });
+//const positionInput = fields.createSelectInput({ id: 'position', name: 'position', options: positionOptions });
+//const positionField = fields.createFormGroup({ input: positionInput, label: 'Position' });
 
-//todo this is not displaying with steps for number selection and is instead a plain text field
+const positionButtons = makeRadioButtons(positionOptions, "Position", 'position');
+
 const manualInput = fields.createNumberInput({ id: 'override', name: 'override', min: -5, max: 8, step: 1, value: 0 });
 const manualField = fields.createFormGroup({ input: manualInput, label: 'Manual modifier' });
 
-const cutInput = fields.createNumberInput({ id: 'cut', name: 'cut', min: 0, max: 5, step: 1, value: 0 });
-const cutField = fields.createFormGroup({ input: cutInput, label: 'Cut' });
+//const cutInput = fields.createNumberInput({ id: 'cut', name: 'cut', min: 0, max: 5, step: 1, value: 0 });
+//const cutField = fields.createFormGroup({ input: cutInput, label: 'Cut' });
+
+const cutButtons = makeRadioButtons(cutOptions, "Difficulty (Cut)", "cut");
 
 //override dialog onrender to apply style to dialog contents allowing them to scroll if window is too small
 class customDialog extends foundry.applications.api.DialogV2 {
@@ -83,7 +99,7 @@ class customDialog extends foundry.applications.api.DialogV2 {
       checkBoxParent.style['justify-content'] = "flex-start";
 
     let overrideInput = document.getElementById("override");
-    let cutInput = document.getElementById("cut");
+    //let cutInput = document.getElementById("cut");
 
     if (overrideInput) {
       overrideInput.style['width'] = '5rem';
@@ -95,7 +111,7 @@ class customDialog extends foundry.applications.api.DialogV2 {
         overrideParent.style['justify-content'] = "flex-start";
     }
 
-    if (cutInput) {
+    /*if (cutInput) {
       cutInput.style['width'] = '5rem';
       cutInput.style['appearance'] = 'auto';
       cutInput.style['-moz-appearance'] = 'auto';
@@ -103,7 +119,7 @@ class customDialog extends foundry.applications.api.DialogV2 {
       let cutParent = cutInput.parentElement;
       if (cutParent)
         cutParent.style['justify-content'] = "flex-start";
-    }
+    }*/
   }
 }
 
@@ -148,10 +164,10 @@ async function playerFlow() {
       + backgrounds
       + manualField.outerHTML
       + "<div style='font-size:0.8rem; color: palegreen; font-weight: 600; margin-top: -10px;'>## INFO: apply any additional accuracy or difficulty (from pushing the roll, character drive, situation, devil's bargain, etc) here ##</div>"
-      + positionField.outerHTML
+      + positionButtons
       //+ "<div style='font-size:0.8rem; color: pink; font-weight: 600; margin-top: -10px;'>## INFO: position determines the severity of potential consequences resulting from this check ##</div>"
-      + cutField.outerHTML
-      + "<div style='font-size:0.8rem; color: palegreen; font-weight: 600; margin-top: -10px;'>## INFO: cut is a more dramatic difficulty modifier which removes the provided number of highest results. Ask your GM if cut applies, especially if this is a desperate roll or there are relevant penalties ##</div>"
+      + cutButtons
+      //+ "<div style='font-size:0.8rem; color: palegreen; font-weight: 600; margin-top: -10px;'>## INFO: cut is a more dramatic difficulty modifier which removes the provided number of highest results. Ask your GM if cut applies, especially if this is a desperate roll or there are relevant penalties ##</div>"
       + "<div style='font-size:0.8rem; color: pink; font-weight: 600; margin-top: -10px;'>%% REMINDER: you may push a roll by taking stress to add an accuracy OR to reroll a failed roll at a worse position (Desperate rolls cannot be rerolled) %%</div>"
     , buttons: [,
       submitButton,
@@ -194,8 +210,8 @@ async function gmFlow() {
     classes: ['narrative-dialog'],
     content:
       manualField.outerHTML
-      + positionField.outerHTML
-      + cutField.outerHTML
+      + positionButtons
+      + cutButtons
     ,
     buttons: [,
       submitButton,
@@ -306,7 +322,7 @@ function getItemsList(me) {
 
 function makeRadioButtons(opts, name, group) {
   //open html fieldset
-  let set = "<fieldset style='display: flex; flex-direction: column; padding: 0.5rem; margin:0'> <legend>" + name + "</legend>";
+  let set = "<fieldset style='display: flex; flex-direction: row; padding: 0.5rem; margin:0'> <legend>" + name + "</legend>";
   //populate options
   for (let s of opts) {
     set += "<div style='display: flex; flex-direction: row; height: 20px;'>";
