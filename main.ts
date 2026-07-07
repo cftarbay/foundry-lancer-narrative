@@ -16,15 +16,20 @@ const cutOptions = [
 ];
 
 const effectOptions = [
-  { value: 'Limited' },
-  { value: 'Standard', selected: true },
-  { value: 'Great' }
+  { value: 'Limited', label: 'Limited' },
+  { value: 'Standard', label: 'Standard', selected: true },
+  { value: 'Great', label: 'Great' }
 ];
 
 const positionOptions = [
   { value: "Controlled", label: 'Controlled' },
   { value: 'Risky', label: 'Risky', selected: true },
   { value: 'Desperate', label: 'Desperate' }
+];
+
+const rollTypeOptions = [
+  { value: 'private', label: 'Private', selected: true },
+  { value: 'public', label: 'Public' }
 ];
 
 const submitButton = {
@@ -58,31 +63,32 @@ resultAliases.set("Disaster", "Failure");
 //todo this should be a 2d array but who cares
 const resultControlledTable = new Map();
 resultControlledTable.set("Triumph", "The action succeeds.");
-resultControlledTable.set("Conflict", "The action succeeds, but incurs a minor consequence or stress.");
+resultControlledTable.set("Conflict", "The action succeeds, but incurs a minor consequence or stress, or reduces Effect.");
 resultControlledTable.set("Disaster", "The action fails, and also incurs a minor consequence, stress, or introduces a minor narrative complication to the scene.");
 
 const resultRiskyTable = new Map();
 resultRiskyTable.set("Triumph", "The action succeeds, but may still introduce minor consequences or stress.");
-resultRiskyTable.set("Conflict", "The action succeeds, but incurs a consequence, stress, or introduces a narrative complication to the scene.");
-resultRiskyTable.set("Disaster", "The action fails, and also incurs a consequence, stress, or introduces a narrative complication to the scene.");
+resultRiskyTable.set("Conflict", "The action succeeds, but incurs a consequence, stress, reduces Effect, and/or introduces a narrative complication to the scene.");
+resultRiskyTable.set("Disaster", "The action fails, and also incurs a consequence, stress, and/or introduces a narrative complication to the scene.");
 
 const resultDesperateTable = new Map();
 resultDesperateTable.set("Triumph", "The action succeeds, but may still introduce consequences or stress.");
-resultDesperateTable.set("Conflict", "The action succeeds, but incurs a severe consequence, significant stress, or introduces a major narrative complication to the scene.");
-resultDesperateTable.set("Disaster", "The action fails, and also incurs a severe consequence, significant stress, or introduces a major narrative complication to the scene.");
-
-//const positionInput = fields.createSelectInput({ id: 'position', name: 'position', options: positionOptions });
-//const positionField = fields.createFormGroup({ input: positionInput, label: 'Position' });
+resultDesperateTable.set("Conflict", "The action succeeds, but incurs a severe consequence, significant stress, reduces Effect, and/or introduces a major narrative complication to the scene.");
+resultDesperateTable.set("Disaster", "The action fails, and also incurs a severe consequence, significant stress, and/or introduces a major narrative complication to the scene.");
 
 const positionButtons = makeRadioButtons(positionOptions, "Position", 'position');
 
 const manualInput = fields.createNumberInput({ id: 'override', name: 'override', min: -5, max: 8, step: 1, value: 0 });
 const manualField = fields.createFormGroup({ input: manualInput, label: 'Manual modifier' });
 
-//const cutInput = fields.createNumberInput({ id: 'cut', name: 'cut', min: 0, max: 5, step: 1, value: 0 });
-//const cutField = fields.createFormGroup({ input: cutInput, label: 'Cut' });
-
 const cutButtons = makeRadioButtons(cutOptions, "Difficulty (Cut)", "cut");
+
+const effectButtons = makeRadioButtons(effectOptions, "Effect", 'effect');
+
+//todo create function that updates and informs user of current number of dice to roll when form is altered
+function calcDiceLive(){
+  //todo impl
+}
 
 //override dialog onrender to apply style to dialog contents allowing them to scroll if window is too small
 class customDialog extends foundry.applications.api.DialogV2 {
@@ -99,7 +105,6 @@ class customDialog extends foundry.applications.api.DialogV2 {
       checkBoxParent.style['justify-content'] = "flex-start";
 
     let overrideInput = document.getElementById("override");
-    //let cutInput = document.getElementById("cut");
 
     if (overrideInput) {
       overrideInput.style['width'] = '5rem';
@@ -110,16 +115,6 @@ class customDialog extends foundry.applications.api.DialogV2 {
       if (overrideParent)
         overrideParent.style['justify-content'] = "flex-start";
     }
-
-    /*if (cutInput) {
-      cutInput.style['width'] = '5rem';
-      cutInput.style['appearance'] = 'auto';
-      cutInput.style['-moz-appearance'] = 'auto';
-      cutInput.style['flex'] = '0 0 auto';
-      let cutParent = cutInput.parentElement;
-      if (cutParent)
-        cutParent.style['justify-content'] = "flex-start";
-    }*/
   }
 }
 
@@ -167,8 +162,9 @@ async function playerFlow() {
       + positionButtons
       //+ "<div style='font-size:0.8rem; color: pink; font-weight: 600; margin-top: -10px;'>## INFO: position determines the severity of potential consequences resulting from this check ##</div>"
       + cutButtons
+      + effectButtons
       //+ "<div style='font-size:0.8rem; color: palegreen; font-weight: 600; margin-top: -10px;'>## INFO: cut is a more dramatic difficulty modifier which removes the provided number of highest results. Ask your GM if cut applies, especially if this is a desperate roll or there are relevant penalties ##</div>"
-      + "<div style='font-size:0.8rem; color: pink; font-weight: 600; margin-top: -10px;'>%% REMINDER: you may push a roll by taking stress to add an accuracy OR to reroll a failed roll at a worse position (Desperate rolls cannot be rerolled) %%</div>"
+      + "<div style='font-size:0.8rem; color: pink; font-weight: 600; margin-top: -10px;'>%% REMINDER: you may push a roll by taking stress to add an accuracy. Situationally, you may also take a worse Position for increased Effect, or take stress to increase Effect %%</div>"
     , buttons: [,
       submitButton,
       cancelButton
@@ -194,7 +190,7 @@ async function playerFlow() {
 
     const roll = await rollDice(cut);
 
-    let msg = buildResultMsg(roll, getDiceFromRoll(roll), result.position, cut, baseDice, skillName);
+    let msg = buildResultMsg(roll, getDiceFromRoll(roll), result.position, result.effect, cut, baseDice, skillName);
 
     const cm = await ChatMessage.create({
       user: game.user._id,
@@ -204,6 +200,8 @@ async function playerFlow() {
 }
 
 async function gmFlow() {
+  const visibilityButtons = makeRadioButtons(rollTypeOptions, "Roll Visibility", 'visibility');
+
   const result = await customDialog.wait({
     window: { title: "Narrative Check", resizable: true, contentClasses: ['narrativeDialog'] },
     position: { width: 460 },
@@ -212,6 +210,8 @@ async function gmFlow() {
       manualField.outerHTML
       + positionButtons
       + cutButtons
+      + effectButtons
+      + visibilityButtons
     ,
     buttons: [,
       submitButton,
@@ -230,15 +230,20 @@ async function gmFlow() {
 
     const roll = await rollDice(cut);
 
-    let msg = buildResultMsg(roll, getDiceFromRoll(roll), result.position, cut, baseDice);
+    let msg = buildResultMsg(roll, getDiceFromRoll(roll), result.position, result.effect, cut, baseDice);
 
     const uid = game.user.id;
 
-    const cm = await ChatMessage.create({
+    let messageParams = {
       user: game.user._id,
       content: msg,
-      whisper: uid
-    });
+    }
+    if (result.visibility === 'private')
+      messageParams['whisper'] = uid;
+
+    const cm = await ChatMessage.create(
+      messageParams
+    );
   }
 }
 
@@ -377,16 +382,27 @@ function findTwist(dice, cut) {
   return false;
 }
 
-function buildResultMsg(r, dice, pos, cut, baseDice, skill = '') {
+function findCrit(twist, die) {
+  //if no twist, no crit
+  if (!twist) return false;
+  //if result is 6 and twist, crit
+  if (die === 6) return true;
+  //otherwise result is not 6, no crit
+  return false;
+}
+
+function buildResultMsg(r, dice, pos, effect, cut, baseDice, skill = '') {
   const twist = findTwist(dice, cut);
   const outcome = getSuccess(dice);
+  const crit = findCrit(twist, dice[0]);
 
   let dieRoll = baseDice + 'd6';
   if (cut > 0)
-    dieRoll += ' (cut highest ' + cut + ')';
+    dieRoll += ' (cut ' + cut + ')';
   dieRoll += ' keep highest';
 
   let msg = "<h6 style='font-style: italic; font-size: 1.2rem '>" + pos + " " + skill + " Check </h6>";
+  msg += "<div style='font-size:0.9rem; font-weight:bold'>On success: " + effect + " Effect </div>"
   msg += "<div style='border: 2px solid black; border-radius: 5px; padding: 8px;'>";
   msg += "<div style='font-size: 0.8rem; width: max-content; border-bottom: 1px solid black'> [ Rolled " + dieRoll + " ] </div>";
 
@@ -394,6 +410,7 @@ function buildResultMsg(r, dice, pos, cut, baseDice, skill = '') {
 
   msg += "<div style='font-weight: bold; font-size: 1.1rem; margin-top: 10px;'>" + outcome + " // " + resultAliases.get(outcome) + "</div>";
   if (twist) msg += "<div style='font-weight: bold; font-size: 1.05rem; color: maroon;'>!! with a twist !!</div>";
+  if (crit) msg += "<div style='font-weight: bold; font-size: 1.00rem; color: maroon;'>+ increased Effect +</div>";
 
   if (verbose || (twistVerbose && twist)) msg += '<hr style="margin-top: 3px; margin-bottom: 3px;"/>';
   if (verbose) {
@@ -404,6 +421,7 @@ function buildResultMsg(r, dice, pos, cut, baseDice, skill = '') {
   }
   if (verbose && twistVerbose && twist) msg += "<br/>";
   if (twistVerbose && twist) msg += "<div>" + twistTxt + "</div>";
+  if (twistVerbose && crit) msg += "<br/><div>" + critTxt + "</div>";
   msg += "</div>";
 
   return msg;
