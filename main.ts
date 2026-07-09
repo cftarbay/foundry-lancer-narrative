@@ -247,6 +247,7 @@ async function gmFlow() {
   }
 }
 
+//todo play a sound for my cocaine rat husband when dice are rolled
 async function rollDice(cut) {
   let r;
 
