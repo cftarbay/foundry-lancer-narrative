@@ -86,9 +86,11 @@ const cutButtons = makeRadioButtons(cutOptions, "Difficulty (Cut)", "cut");
 const effectButtons = makeRadioButtons(effectOptions, "Effect", 'effect');
 
 //todo create function that updates and informs user of current number of dice to roll when form is altered
-function calcDiceLive(){
+function calcDiceLive() {
   //todo impl
 }
+
+let crit = false;
 
 //override dialog onrender to apply style to dialog contents allowing them to scroll if window is too small
 class customDialog extends foundry.applications.api.DialogV2 {
@@ -192,10 +194,16 @@ async function playerFlow() {
 
     let msg = buildResultMsg(roll, getDiceFromRoll(roll), result.position, result.effect, cut, baseDice, skillName);
 
-    const cm = await ChatMessage.create({
+    let messageParams = {
       user: game.user._id,
-      content: msg
-    });
+      content: msg,
+      sound: '/sounds/dice.wav'
+    }
+    //!TODO add when fred creates and uploads the sound
+    //if (crit)
+    //peent bday party
+    //messageParams['sound'] = '/sounds/peent-party.wav';
+    const cm = await ChatMessage.create(messageParams);
   }
 }
 
@@ -237,6 +245,7 @@ async function gmFlow() {
     let messageParams = {
       user: game.user._id,
       content: msg,
+      sound: '/sounds/dice.wav'
     }
     if (result.visibility === 'private')
       messageParams['whisper'] = uid;
@@ -247,7 +256,6 @@ async function gmFlow() {
   }
 }
 
-//todo play a sound for my cocaine rat husband when dice are rolled
 async function rollDice(cut) {
   let r;
 
@@ -395,7 +403,7 @@ function findCrit(twist, die) {
 function buildResultMsg(r, dice, pos, effect, cut, baseDice, skill = '') {
   const twist = findTwist(dice, cut);
   const outcome = getSuccess(dice);
-  const crit = findCrit(twist, dice[0]);
+  crit = findCrit(twist, dice[0]);
 
   let dieRoll = baseDice + 'd6';
   if (cut > 0)
