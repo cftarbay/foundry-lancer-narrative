@@ -3,6 +3,9 @@ const fields = foundry.applications.fields;
 let verbose = true;
 let twistVerbose = true;
 
+let crit = false;
+let twist = false;
+
 const radioOptions = [
   { value: 1, label: 'Accuracy' },
   { value: -1, label: 'Difficulty' },
@@ -85,12 +88,7 @@ const cutButtons = makeRadioButtons(cutOptions, "Difficulty (Cut)", "cut");
 
 const effectButtons = makeRadioButtons(effectOptions, "Effect", 'effect');
 
-//todo create function that updates and informs user of current number of dice to roll when form is altered
-function calcDiceLive() {
-  //todo impl
-}
 
-let crit = false;
 
 //override dialog onrender to apply style to dialog contents allowing them to scroll if window is too small
 class customDialog extends foundry.applications.api.DialogV2 {
@@ -117,14 +115,38 @@ class customDialog extends foundry.applications.api.DialogV2 {
       if (overrideParent)
         overrideParent.style['justify-content'] = "flex-start";
     }
+    calcDiceLive();
   }
 }
 
 let me;
-if (!game.user.isActiveGM)
+const isGm = game.user.isActiveGM;
+if (!isGm)
   await playerFlow();
 else
   await gmFlow();
+
+//todo create function that updates and informs user of current number of dice to roll when form is altered
+function calcDiceLive() {
+  //todo impl
+  if (!isGm) {
+    //get dialog fields and check when updated
+    let helpBox = document.getElementById("helpAction");
+    helpBox?.addEventListener("change", (e) => { console.log(e.target.checked); })
+
+    let skills = document.getElementById("skills");
+
+    let burden = document.getElementById("burdens");
+
+    let gear = document.getElementById("gear");
+
+    let override = document.getElementById("override");
+
+
+    //get: skill, burden, gear, bg, manmod, difficulty
+  }
+
+}
 
 async function playerFlow() {
   const me = game.user.character;
@@ -199,11 +221,18 @@ async function playerFlow() {
       content: msg,
       sound: '/sounds/dice.wav'
     }
-    //!TODO add when fred creates and uploads the sound
-    //if (crit)
-    //peent bday party
-    //messageParams['sound'] = '/sounds/peent-party.wav';
-    const cm = await ChatMessage.create(messageParams);
+    if (crit)
+      //peent bday party
+      messageParams['sound'] = '/audio/peent-party.mp3';
+    else if (twist) messageParams['sound'] = '/audio/peent.mp3';
+    //if user does not have audio installed, make sure to catch err and still roll without audio
+    try {
+      const cm = await ChatMessage.create(messageParams);
+    }
+    catch (e) {
+      delete messageParams.sound;
+      const cm = await ChatMessage.create(messageParams);
+    }
   }
 }
 
@@ -256,6 +285,7 @@ async function gmFlow() {
   }
 }
 
+//!TODO my husband has requested different math
 async function rollDice(cut) {
   let r;
 
@@ -391,7 +421,7 @@ function findTwist(dice, cut) {
   return false;
 }
 
-function findCrit(twist, die) {
+function findCrit(die) {
   //if no twist, no crit
   if (!twist) return false;
   //if result is 6 and twist, crit
@@ -401,9 +431,9 @@ function findCrit(twist, die) {
 }
 
 function buildResultMsg(r, dice, pos, effect, cut, baseDice, skill = '') {
-  const twist = findTwist(dice, cut);
+  twist = findTwist(dice, cut);
   const outcome = getSuccess(dice);
-  crit = findCrit(twist, dice[0]);
+  crit = findCrit(dice[0]);
 
   let dieRoll = baseDice + 'd6';
   if (cut > 0)
@@ -415,7 +445,7 @@ function buildResultMsg(r, dice, pos, effect, cut, baseDice, skill = '') {
   msg += "<div style='border: 2px solid black; border-radius: 5px; padding: 8px;'>";
   msg += "<div style='font-size: 0.8rem; width: max-content; border-bottom: 1px solid black'> [ Rolled " + dieRoll + " ] </div>";
 
-  msg += getDiceDisplay(dice, twist, cut);
+  msg += getDiceDisplay(dice, cut);
 
   msg += "<div style='font-weight: bold; font-size: 1.1rem; margin-top: 10px;'>" + outcome + " // " + resultAliases.get(outcome) + "</div>";
   if (twist) msg += "<div style='font-weight: bold; font-size: 1.05rem; color: maroon;'>!! with a twist !!</div>";
@@ -436,7 +466,7 @@ function buildResultMsg(r, dice, pos, effect, cut, baseDice, skill = '') {
   return msg;
 }
 
-function getDiceDisplay(dice, twist, cut) {
+function getDiceDisplay(dice, cut) {
   let msg = '<div style="background-color:whitesmoke; padding: 6px; width: max-content; margin-top: 4px; margin-bottom: 3px; ">';
   for (let i = 0; i < dice.length; i++) {
     let color = 'gray';
