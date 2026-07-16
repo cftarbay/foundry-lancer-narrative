@@ -1,40 +1,49 @@
-let baseDice = 1;
+let baseDice = 0;
 const fields = foundry.applications.fields;
+
+//toggle the amount of informational text shown in chat messages
 let verbose = true;
 let twistVerbose = true;
 
 let crit = false;
 let twist = false;
+let cut = 0;
 
+//radio button options for background accuracy or penalty
 const radioOptions = [
   { value: 1, label: 'Accuracy' },
   { value: -1, label: 'Difficulty' },
   { value: 0, label: 'None', selected: true }
 ];
 
+//cut options to institute difficulty
 const cutOptions = [
   { value: 0, label: 'Normal', selected: true },
   { value: 1, label: 'Difficult (Cut 1)' },
   { value: 2, label: 'Heroic (Cut 2)' }
 ];
 
+//effect options to determine impact of roll
 const effectOptions = [
   { value: 'Limited', label: 'Limited' },
   { value: 'Standard', label: 'Standard', selected: true },
   { value: 'Great', label: 'Great' }
 ];
 
+//position options to determine possible consequences of roll
 const positionOptions = [
   { value: "Controlled", label: 'Controlled' },
   { value: 'Risky', label: 'Risky', selected: true },
   { value: 'Desperate', label: 'Desperate' }
 ];
 
+//for gm to choose visible or invisible roll type
 const rollTypeOptions = [
   { value: 'private', label: 'Private', selected: true },
   { value: 'public', label: 'Public' }
 ];
 
+//dialog submit button
 const submitButton = {
   action: "submit",
   label: "Confirm",
@@ -46,6 +55,7 @@ const submitButton = {
   }
 };
 
+//dialog cancel button
 const cancelButton = {
   action: "cancel",
   label: "Cancel",
@@ -79,33 +89,32 @@ resultDesperateTable.set("Triumph", "The action succeeds, but may still introduc
 resultDesperateTable.set("Conflict", "The action succeeds, but incurs a severe consequence, significant stress, reduces Effect, and/or introduces a major narrative complication to the scene.");
 resultDesperateTable.set("Disaster", "The action fails, and also incurs a severe consequence, significant stress, and/or introduces a major narrative complication to the scene.");
 
-const positionButtons = makeRadioButtons(positionOptions, "Position", 'position');
-
 const manualInput = fields.createNumberInput({ id: 'override', name: 'override', min: -5, max: 8, step: 1, value: 0 });
 const manualField = fields.createFormGroup({ input: manualInput, label: 'Manual modifier' });
 
 const cutButtons = makeRadioButtons(cutOptions, "Difficulty (Cut)", "cut");
-
 const effectButtons = makeRadioButtons(effectOptions, "Effect", 'effect');
+const positionButtons = makeRadioButtons(positionOptions, "Position", 'position');
 
-
-
-//override dialog onrender to apply style to dialog contents allowing them to scroll if window is too small
+//override dialog onrender to apply styles to dialog elements
 class customDialog extends foundry.applications.api.DialogV2 {
   _onRender(options) {
     let narrativeChecks = document.getElementsByClassName('narrativeDialog');
 
+    //let dialog scroll vertically if necessary
     if (narrativeChecks && narrativeChecks.length > 0) {
       let style = narrativeChecks[0].style;
       style['overflow-y'] = 'scroll';
     }
 
+    //move help checkbox left instead of far right
     let checkBoxParent = document.getElementById("helpAction")?.parentElement;
     if (checkBoxParent)
       checkBoxParent.style['justify-content'] = "flex-start";
 
+    //reduce width of override number input and put spinner arrows back
+    //todo only works on some browsers (mine but not freds)
     let overrideInput = document.getElementById("override");
-
     if (overrideInput) {
       overrideInput.style['width'] = '5rem';
       overrideInput.style['appearance'] = 'auto';
@@ -115,6 +124,8 @@ class customDialog extends foundry.applications.api.DialogV2 {
       if (overrideParent)
         overrideParent.style['justify-content'] = "flex-start";
     }
+
+    //register listeners to update the number of dice to be rolled when user changes a field value
     calcDiceLive();
   }
 }
@@ -145,7 +156,6 @@ function calcDiceLive() {
 
     //get: skill, burden, gear, bg, manmod, difficulty
   }
-
 }
 
 async function playerFlow() {
@@ -205,17 +215,12 @@ async function playerFlow() {
     const addBg = parseInt(result.background);
 
     baseDice += addSkills + addGear + subBurdens + manMod + addBg;
-
     if (result.helpAction) baseDice += 1;
 
-    let cut = parseInt(result.cut);
-    //even if cutting have to allow one die to be rolled
-    if (cut >= baseDice) cut = baseDice - 1;
-
-    const roll = await rollDice(cut);
+    cut = parseInt(result.cut);
+    const roll = await rollDice();
 
     let msg = buildResultMsg(roll, getDiceFromRoll(roll), result.position, result.effect, cut, baseDice, skillName);
-
     let messageParams = {
       user: game.user._id,
       content: msg,
@@ -256,16 +261,11 @@ async function gmFlow() {
     ]
   });
   if (!!result && result !== 'cancel') {
-    const manMod = parseInt(result.override);
-    //we want gm input to just be the number rolled except in the case of 0
-    if (manMod === 0) baseDice = 1;
-    else baseDice = manMod;
+    //we want gm input to just be the number rolled
+    baseDice = parseInt(result.override);
+    cut = parseInt(result.cut);
 
-    let cut = parseInt(result.cut);
-    //even if cutting have to allow one die to be rolled
-    if (cut >= baseDice) cut = baseDice - 1;
-
-    const roll = await rollDice(cut);
+    const roll = await rollDice();
 
     let msg = buildResultMsg(roll, getDiceFromRoll(roll), result.position, result.effect, cut, baseDice);
 
@@ -286,16 +286,29 @@ async function gmFlow() {
 }
 
 //!TODO my husband has requested different math
-async function rollDice(cut) {
+async function rollDice() {
   let r;
+
+  //if cut is greater than or equal to base dice
+
+  //note: it is possible to twist on kl rolls
+  //0 base dice 0 cut- 2d6kl1
+  //0 base dice 1 cut- 3d6kl1
+  //0 base dice 2 cut- 4d6kl1
+  //1 base die 1 cut- 2d6kl1
+  //1 base die 2 cut- 3d6kl1
+  //2 base dice 2 cut- 2d6kl1
 
   //cannot roll more than 6 dice
   if (baseDice > 6) baseDice = 6;
-
   let dieString = '';
 
-  //if less than one die base, roll at disadvantage
-  if (baseDice < 1) dieString = '2d6kl1';
+  //if -2 dice base or cut makes it -2, roll at extra disadv. u r cookt
+  if (baseDice < -1 || baseDice - cut === -2) dieString = '4d6kl1';
+  //if -1 dice base or cut makes it -1, roll at double disadv
+  else if (baseDice < 0 || baseDice - cut === -1) dieString = '3d6kl1';
+  //if less than one die base or cut same number as die, roll at disadvantage
+  else if (baseDice < 1 || baseDice - cut === 0) dieString = '2d6kl1';
   //if one die just roll
   else if (baseDice === 1) dieString = '1d6';
   //if cutting highest
@@ -313,12 +326,10 @@ function getSkillsList(me) {
   let skills = [
     { label: "None", value: "Unskilled|0" }
   ];
-
   //populate list of character skills and their values
   for (let i of me.items._source) {
     if (i.type === "skill") {
       let rank = i.system.curr_rank;
-
       skills.push({
         label: i.name + ' (+' + rank + ')',
         value: i.name + "|" + rank
@@ -333,7 +344,6 @@ function getBurdensList(me) {
   let burdens = [
     { label: "None", value: 0 }
   ];
-
   //populate list of burdens
   for (let i of me.system?.bond_state?.burdens) {
     burdens.push({
@@ -341,7 +351,6 @@ function getBurdensList(me) {
       value: -1
     });
   }
-
   return burdens;
 }
 
@@ -350,7 +359,6 @@ function getItemsList(me) {
   let items = [
     { label: "None", value: 0 }
   ];
-
   //populate list of pilot gear
   for (let i of me.items._source) {
     if (i.type === "pilot_gear" || i.type === "pilot_armor" || i.type === "pilot_weapon") {
@@ -360,7 +368,6 @@ function getItemsList(me) {
       });
     }
   }
-
   return items;
 }
 
@@ -375,32 +382,20 @@ function makeRadioButtons(opts, name, group) {
       set += " checked>";
     else set += ">";
     set += "<label for='" + s.label + "' ";
-
     set += ">" + s.label + "</label>";
-
     set += "</div>";
   }
   set += "</fieldset>";
   return set;
 }
 
-function applyStyles(str, styles) {
-  return str += ' style="' + styles + '" ';
-}
-
-function addLabelFor(id, label) {
-  return '<label for="' + id + '">' + label + '</label>';
-}
-
 function getDiceFromRoll(r) {
   let dice = r.terms[0].results;
-
   dice.sort((a, b) => {
     if (a.active) return -1;
     if (b.active) return 1;
     else return b.result - a.result;
   });
-
   return dice.map(d => { return d.result });
 }
 
