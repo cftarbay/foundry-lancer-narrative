@@ -8,6 +8,8 @@ let twistVerbose = true;
 let crit = false;
 let twist = false;
 let cut = 0;
+let dieString = '';
+let liveDice = 0;
 
 //radio button options for background accuracy or penalty
 const radioOptions = [
@@ -113,7 +115,7 @@ class customDialog extends foundry.applications.api.DialogV2 {
       checkBoxParent.style['justify-content'] = "flex-start";
 
     //reduce width of override number input and put spinner arrows back
-    //todo only works on some browsers (mine but not freds)
+    //!TODO only works on some browsers (mine but not freds)
     let overrideInput = document.getElementById("override");
     if (overrideInput) {
       overrideInput.style['width'] = '5rem';
@@ -127,6 +129,7 @@ class customDialog extends foundry.applications.api.DialogV2 {
 
     //register listeners to update the number of dice to be rolled when user changes a field value
     calcDiceLive();
+    getFormValuesLive();
   }
 }
 
@@ -137,26 +140,61 @@ if (!isGm)
 else
   await gmFlow();
 
-//todo create function that updates and informs user of current number of dice to roll when form is altered
 function calcDiceLive() {
-  //todo impl
-  if (!isGm) {
-    //get dialog fields and check when updated
-    let helpBox = document.getElementById("helpAction");
-    helpBox?.addEventListener("change", (e) => { console.log(e.target.checked); })
-
-    let skills = document.getElementById("skills");
-
-    let burden = document.getElementById("burdens");
-
-    let gear = document.getElementById("gear");
-
-    let override = document.getElementById("override");
-
-
-    //get: skill, burden, gear, bg, manmod, difficulty
-  }
+  document.getElementById("helpAction")?.addEventListener("change", (e) => { getFormValuesLive(); });
+  document.getElementById("skills")?.addEventListener("change", (e) => { getFormValuesLive(); });
+  document.getElementById("burdens")?.addEventListener("change", (e) => { getFormValuesLive(); });
+  document.getElementById("gear")?.addEventListener("change", (e) => { getFormValuesLive(); });
+  document.getElementById("override")?.addEventListener("change", (e) => { getFormValuesLive(); });
+  document.getElementById("background-buttons")?.addEventListener("change", (e) => { getFormValuesLive(); });
+  document.getElementById("cut-buttons")?.addEventListener("change", (e) => { getFormValuesLive(); });
 }
+
+function getFormValuesLive() {
+  const beingHelped = document.getElementById("helpAction")?.checked ? 1 : 0;
+
+  const skillValue = document.getElementById("skills")?.value ?? '|0';
+  const skillNum = parseInt(skillValue.split('|')[1]);
+
+  const burdenValue = parseInt(document.getElementById("burdens")?.value ?? '0');
+  const gearValue = parseInt(document.getElementById("gear")?.value ?? '0');
+
+  const overrideValue = parseInt(document.getElementById("override")?.value ?? '0');
+
+  const selectedBackground = parseInt(document.querySelector('input[name="background"]:checked')?.value ?? '0');
+
+  const selectedCut = parseInt(document.querySelector('input[name="cut"]:checked')?.value ?? '0');
+
+  const diceRolling = beingHelped + skillNum + burdenValue + gearValue + overrideValue + selectedBackground;
+
+  let diceString = diceRolling + "d6";
+  if (diceRolling - selectedCut <= 0)
+    diceString = '2d6 keep lowest';
+  else if (selectedCut > 0)
+    diceString += ' cut ' + selectedCut;
+
+  let tooltipString = "";
+  if (isGm)
+    tooltipString += 'Manual Dice Pool: ' + overrideValue + '; ';
+  else {
+    tooltipString += 'Skill: ' + skillNum + '; ';
+    if (burdenValue != 0)
+      tooltipString += 'Burden: ' + burdenValue + '; ';
+    if (gearValue > 0)
+      tooltipString += 'Gear: ' + gearValue + '; ';
+    if (beingHelped > 0)
+      tooltipString += 'Help Provided: ' + beingHelped + '; ';
+    if (selectedBackground != 0)
+      tooltipString += 'Background Effect: ' + selectedBackground + '; ';
+    if (overrideValue != 0)
+      tooltipString += 'Manual Modifier: ' + overrideValue + '; ';
+  }
+  if (selectedCut != 0)
+    tooltipString += 'Difficulty: Cut ' + selectedCut + '; ';
+
+  document.getElementById("liveCalc").innerHTML = '<div style="border-radius: 0.5rem; border: 1px dashed papayawhip; padding:0.5rem; cursor:help;" title="' + tooltipString + '">Rolling ' + diceString + '</div>';
+}
+
 
 async function playerFlow() {
   const me = game.user.character;
@@ -199,6 +237,7 @@ async function playerFlow() {
       + effectButtons
       //+ "<div style='font-size:0.8rem; color: palegreen; font-weight: 600; margin-top: -10px;'>## INFO: cut is a more dramatic difficulty modifier which removes the provided number of highest results. Ask your GM if cut applies, especially if this is a desperate roll or there are relevant penalties ##</div>"
       + "<div style='font-size:0.8rem; color: pink; font-weight: 600; margin-top: -10px;'>%% REMINDER: you may push a roll by taking stress to add an accuracy. Situationally, you may also take a worse Position for increased Effect, or take stress to increase Effect %%</div>"
+      + "<div id='liveCalc'></div>"
     , buttons: [,
       submitButton,
       cancelButton
@@ -211,7 +250,7 @@ async function playerFlow() {
     const addSkills = skillValue;
     const addGear = parseInt(result.gear ?? '0');
     const subBurdens = parseInt(result.burdens ?? '0');
-    const manMod = parseInt(result.override);
+    const manMod = parseInt(result.override ?? '0');
     const addBg = parseInt(result.background);
 
     baseDice += addSkills + addGear + subBurdens + manMod + addBg;
@@ -254,6 +293,7 @@ async function gmFlow() {
       + cutButtons
       + effectButtons
       + visibilityButtons
+      + "<div id='liveCalc'></div>"
     ,
     buttons: [,
       submitButton,
@@ -285,30 +325,17 @@ async function gmFlow() {
   }
 }
 
-//!TODO my husband has requested different math
 async function rollDice() {
   let r;
 
-  //if cut is greater than or equal to base dice
-
   //note: it is possible to twist on kl rolls
-  //0 base dice 0 cut- 2d6kl1
-  //0 base dice 1 cut- 3d6kl1
-  //0 base dice 2 cut- 4d6kl1
-  //1 base die 1 cut- 2d6kl1
-  //1 base die 2 cut- 3d6kl1
-  //2 base dice 2 cut- 2d6kl1
+  //if dice - cut <= 0, 2d6kl1
+  //if cut >= dice and dice/cut is not 0, no triumph allowed
 
   //cannot roll more than 6 dice
   if (baseDice > 6) baseDice = 6;
-  let dieString = '';
 
-  //if -2 dice base or cut makes it -2, roll at extra disadv. u r cookt
-  if (baseDice < -1 || baseDice - cut === -2) dieString = '4d6kl1';
-  //if -1 dice base or cut makes it -1, roll at double disadv
-  else if (baseDice < 0 || baseDice - cut === -1) dieString = '3d6kl1';
-  //if less than one die base or cut same number as die, roll at disadvantage
-  else if (baseDice < 1 || baseDice - cut === 0) dieString = '2d6kl1';
+  if (baseDice < 1 || baseDice - cut <= 0) dieString = '2d6kl1';
   //if one die just roll
   else if (baseDice === 1) dieString = '1d6';
   //if cutting highest
@@ -373,7 +400,7 @@ function getItemsList(me) {
 
 function makeRadioButtons(opts, name, group) {
   //open html fieldset
-  let set = "<fieldset style='display: flex; flex-direction: row; padding: 0.5rem; margin:0'> <legend>" + name + "</legend>";
+  let set = "<fieldset id='" + group + "-buttons' style='display: flex; flex-direction: row; padding: 0.5rem; margin:0'> <legend>" + name + "</legend>";
   //populate options
   for (let s of opts) {
     set += "<div style='display: flex; flex-direction: row; height: 20px;'>";
@@ -400,7 +427,8 @@ function getDiceFromRoll(r) {
 }
 
 function getSuccess(dice) {
-  if (dice[0] === 6) return "Triumph"; //complete success
+  //can only triumph on 6 and more dice than cut or 0 dice or 0 cut
+  if ((dice[0] === 6) && (baseDice > cut || (cut === 0 && baseDice === 0))) return "Triumph"; //complete success
   else if (dice[0] > 3) return "Conflict"; //partial success
   else return "Disaster"; //failure
 }
@@ -408,8 +436,8 @@ function getSuccess(dice) {
 function findTwist(dice, cut) {
   //only one die, no twist
   if (dice.length < 2) return false;
-  //if no cut, compare highest 2 dice
-  if (cut === 0) return dice[0] === dice[1];
+  //if no cut (or functionally no cut), compare highest 2 dice
+  if (cut === 0 || dieString === '2d6kl1') return dice[0] === dice[1];
   //if cutting, skip over cut dice
   if ((cut + 1) < dice.length) return dice[0] === dice[cut + 1];
   //otherwise no twist
@@ -431,9 +459,14 @@ function buildResultMsg(r, dice, pos, effect, cut, baseDice, skill = '') {
   crit = findCrit(dice[0]);
 
   let dieRoll = baseDice + 'd6';
-  if (cut > 0)
-    dieRoll += ' (cut ' + cut + ')';
-  dieRoll += ' keep highest';
+  if (baseDice === 0 || baseDice - cut <= 0)
+    dieRoll = '2d6 keep lowest';
+  else {
+    if (cut > 0)
+      dieRoll += ' (cut ' + cut + ')';
+    if (baseDice - cut > 1)
+      dieRoll += ' keep highest';
+  }
 
   let msg = "<h6 style='font-style: italic; font-size: 1.2rem '>" + pos + " " + skill + " Check </h6>";
   msg += "<div style='font-size:0.9rem; font-weight:bold'>On success: " + effect + " Effect </div>"
