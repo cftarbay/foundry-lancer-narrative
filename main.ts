@@ -1,4 +1,5 @@
-let baseDice = 0;
+//amount of dice to be rolled
+let baseDice = 1;
 const fields = foundry.applications.fields;
 
 //toggle the amount of informational text shown in chat messages
@@ -9,7 +10,6 @@ let crit = false;
 let twist = false;
 let cut = 0;
 let dieString = '';
-let liveDice = 0;
 
 //radio button options for background accuracy or penalty
 const radioOptions = [
@@ -127,7 +127,7 @@ class customDialog extends foundry.applications.api.DialogV2 {
         overrideParent.style['justify-content'] = "flex-start";
     }
 
-    //register listeners to update the number of dice to be rolled when user changes a field value
+    //register listeners to update the displayed number of dice to be rolled when user changes a field value
     calcDiceLive();
     getFormValuesLive();
   }
@@ -150,6 +150,8 @@ function calcDiceLive() {
   document.getElementById("cut-buttons")?.addEventListener("change", (e) => { getFormValuesLive(); });
 }
 
+//retrieves values from form in dialog to show number of dice that will be rolled, before roll occurs
+//updates live as user updates form values
 function getFormValuesLive() {
   const beingHelped = document.getElementById("helpAction")?.checked ? 1 : 0;
 
@@ -165,7 +167,7 @@ function getFormValuesLive() {
 
   const selectedCut = parseInt(document.querySelector('input[name="cut"]:checked')?.value ?? '0');
 
-  const diceRolling = beingHelped + skillNum + burdenValue + gearValue + overrideValue + selectedBackground;
+  const diceRolling = 1 + beingHelped + skillNum + burdenValue + gearValue + overrideValue + selectedBackground;
 
   let diceString = diceRolling + "d6";
   if (diceRolling - selectedCut <= 0)
@@ -236,7 +238,7 @@ async function playerFlow() {
       + cutButtons
       + effectButtons
       //+ "<div style='font-size:0.8rem; color: palegreen; font-weight: 600; margin-top: -10px;'>## INFO: cut is a more dramatic difficulty modifier which removes the provided number of highest results. Ask your GM if cut applies, especially if this is a desperate roll or there are relevant penalties ##</div>"
-      + "<div style='font-size:0.8rem; color: pink; font-weight: 600; margin-top: -10px;'>%% REMINDER: you may push a roll by taking stress to add an accuracy. Situationally, you may also take a worse Position for increased Effect, or take stress to increase Effect %%</div>"
+      + "<div style='font-size:0.8rem; color: pink; font-weight: 600; margin-top: -10px;'>%% REMINDER: you may push a roll by taking stress to add an accuracy. Situationally, you may also take a worse Position for increased Effect, or take stress to increase Effect. You may also push to reroll a failed Controlled roll at Risky Position %%</div>"
       + "<div id='liveCalc'></div>"
     , buttons: [,
       submitButton,
