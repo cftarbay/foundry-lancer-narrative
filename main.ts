@@ -208,7 +208,6 @@ function getFormValuesLive() {
   document.getElementById("liveCalc").innerHTML = '<div style="border-radius: 0.5rem; border: 1px dashed papayawhip; padding:0.5rem; cursor:help;" title="' + tooltipString + '">Rolling ' + diceString + '</div>';
 }
 
-
 async function playerFlow() {
   const me = game.user.character;
   const skillList = getSkillsList(me);
@@ -250,7 +249,7 @@ async function playerFlow() {
       + effectButtons
       //+ "<div style='font-size:0.8rem; color: palegreen; font-weight: 600; margin-top: -10px;'>## INFO: cut is a more dramatic difficulty modifier which removes the provided number of highest results. Ask your GM if cut applies, especially if this is a desperate roll or there are relevant penalties ##</div>"
       + "<div style='font-size:0.8rem; color: pink; font-weight: 600; margin-top: -10px;'>%% REMINDER: you may push a roll by taking stress to add an accuracy. Situationally, you may also take a worse Position for increased Effect, or take stress to increase Effect. You may also push to reroll a failed Controlled roll at Risky Position %%</div>"
-      + "<div id='liveCalc'></div>"
+      + "<div id='liveCalc' style='margin-top:-0.5rem;'></div>"
     , buttons: [,
       submitButton,
       cancelButton
@@ -306,7 +305,7 @@ async function gmFlow() {
       + cutButtons
       + effectButtons
       + visibilityButtons
-      + "<div id='liveCalc'></div>"
+      + "<div id='liveCalc' style='margin-top:-0.5rem;'></div>"
     ,
     buttons: [,
       submitButton,
