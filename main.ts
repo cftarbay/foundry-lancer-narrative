@@ -176,7 +176,8 @@ function getFormValuesLive() {
 
   const selectedCut = parseInt(document.querySelector('input[name="cut"]:checked')?.value ?? '0');
 
-  const diceRolling = 1 + beingHelped + skillNum + burdenValue + gearValue + overrideValue + selectedBackground;
+  let playerBonus = isGm ? 0 : 1;
+  const diceRolling = playerBonus + beingHelped + skillNum + burdenValue + gearValue + overrideValue + selectedBackground;
 
   let diceString = diceRolling + "d6";
   if (diceRolling - selectedCut <= 0)
