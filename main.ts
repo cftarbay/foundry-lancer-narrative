@@ -109,6 +109,15 @@ class customDialog extends foundry.applications.api.DialogV2 {
       style['overflow-y'] = 'scroll';
     }
 
+    //reduce some spacing between form elements a little bc dialog size is getting out of hand
+    let formGroups = document.getElementsByClassName('form-group');
+    if (formGroups && formGroups.length > 0) {
+      for (let i = 0; i < formGroups.length; i++) {
+        let style = formGroups[i].style;
+        style['margin-bottom'] = '-0.5rem';
+      }
+    }
+
     //move help checkbox left instead of far right
     let checkBoxParent = document.getElementById("helpAction")?.parentElement;
     if (checkBoxParent)
@@ -179,7 +188,9 @@ function getFormValuesLive() {
   if (isGm)
     tooltipString += 'Manual Dice Pool: ' + overrideValue + '; ';
   else {
-    tooltipString += 'Skill: ' + skillNum + '; ';
+    tooltipString += 'Base: 1; ';
+    if (skillNum != 0)
+      tooltipString += 'Skill: ' + skillNum + '; ';
     if (burdenValue != 0)
       tooltipString += 'Burden: ' + burdenValue + '; ';
     if (gearValue > 0)
@@ -232,7 +243,7 @@ async function playerFlow() {
       + "<div style='font-size:0.8rem; color: yellow; font-weight: 600; margin-top: -10px;'>!! WARNING: providing help forces the helping character to take stress (on a Risky or Desperate roll) and exposes them to any consequences that result from this check !!</div>"
       + backgrounds
       + manualField.outerHTML
-      + "<div style='font-size:0.8rem; color: palegreen; font-weight: 600; margin-top: -10px;'>## INFO: apply any additional accuracy or difficulty (from pushing the roll, character drive, situation, devil's bargain, etc) here ##</div>"
+      + "<div style='font-size:0.8rem; color: palegreen; font-weight: 600; margin-top: -5px;'>## INFO: apply any additional accuracy or difficulty (from pushing the roll, character drive, situation, devil's bargain, etc) here ##</div>"
       + positionButtons
       //+ "<div style='font-size:0.8rem; color: pink; font-weight: 600; margin-top: -10px;'>## INFO: position determines the severity of potential consequences resulting from this check ##</div>"
       + cutButtons
@@ -402,7 +413,7 @@ function getItemsList(me) {
 
 function makeRadioButtons(opts, name, group) {
   //open html fieldset
-  let set = "<fieldset id='" + group + "-buttons' style='display: flex; flex-direction: row; padding: 0.5rem; margin:0'> <legend>" + name + "</legend>";
+  let set = "<fieldset id='" + group + "-buttons' style='display: flex; flex-direction: row; padding: 0.5rem; margin:0; margin-top:-0.5rem'> <legend>" + name + "</legend>";
   //populate options
   for (let s of opts) {
     set += "<div style='display: flex; flex-direction: row; height: 20px;'>";
@@ -438,6 +449,8 @@ function getSuccess(dice) {
 function findTwist(dice, cut) {
   //only one die, no twist
   if (dice.length < 2) return false;
+  //if cutting down to one or fewer dice, no twist allowed
+  if (cut >= dice.length - 1) return false;
   //if no cut (or functionally no cut), compare highest 2 dice
   if (cut === 0 || dieString === '2d6kl1') return dice[0] === dice[1];
   //if cutting, skip over cut dice
